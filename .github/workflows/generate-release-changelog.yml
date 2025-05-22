@@ -41,6 +41,8 @@ jobs:
         shell: bash
         run: |
           cd server
+          git status
+          git log --decorate --oneline | egrep '^[0-9a-f]+ \((HEAD, )?tag: ' | sed -r 's/^.+tag: ([^ ]+)[,\)].+$/\1/g' | grep -v 'rc\|beta\|alpha'
           TAGS=$(git log --decorate --oneline | egrep '^[0-9a-f]+ \((HEAD, )?tag: ' | sed -r 's/^.+tag: ([^ ]+)[,\)].+$/\1/g' | grep -v 'rc\|beta\|alpha')
           CURRENT_TAG=$(echo "$TAGS" | head -n 1)
           PREVIOUS_TAG=$(echo "$TAGS" | sed -n '2p')
