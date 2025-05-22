@@ -80,7 +80,7 @@ jobs:
         run: |
           cd github_helper/changelog
           composer install
-          php index.php generate:changelog --no-bots server ${{ env.PREVIOUS_TAG }} ${{ github.ref_name }} > changelog.md
+          php index.php generate:changelog --no-bots --format=forum server ${{ env.PREVIOUS_TAG }} ${{ github.ref_name }} > changelog.md
           {
             echo 'CHANGELOG<<EOF'
             cat changelog.md
