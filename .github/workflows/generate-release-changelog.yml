@@ -75,11 +75,17 @@ jobs:
 
       - name: Generate changelog between ${{ env.PREVIOUS_TAG }} and ${{ github.ref_name }}
         id: changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd github_helper/changelog
           composer install
           php index.php generate:changelog --no-bots server ${{ env.PREVIOUS_TAG }} ${{ github.ref_name }} > changelog.md
-          echo "CHANGELOG=$(cat changelog.md)" >> $GITHUB_ENV
+          {
+            echo 'CHANGELOG<<EOF'
+            cat changelog.md
+            echo 'EOF'
+          } >> $GITHUB_ENV
 
       - name: Set changelog to release
         run: |
