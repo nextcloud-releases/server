@@ -35,6 +35,7 @@ jobs:
         with:
           persist-credentials: false
           path: server
+          fetch-depth: 0
 
       - name: Get previous tag
         id: previous_tag
