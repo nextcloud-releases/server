@@ -82,7 +82,7 @@ jobs:
           composer install
           php index.php generate:changelog --no-bots --format=forum server ${{ env.PREVIOUS_TAG }} ${{ github.ref_name }} > changelog.md
           {
-            echo 'CHANGELOG<<EOF'
+            echo 'CHANGELOG<<"EOF"'
             cat changelog.md
             echo 'EOF'
           } >> $GITHUB_ENV
