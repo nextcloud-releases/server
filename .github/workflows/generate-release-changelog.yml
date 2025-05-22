@@ -29,6 +29,7 @@ jobs:
           persist-credentials: false
           repository: nextcloud/github_helper
           path: github_helper
+          ref: feat/auth_token
 
       - name: Checkout server
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -70,11 +71,7 @@ jobs:
 
       - name: Set credentials
         run: |
-          # Set helper credentials on credentials.json
-          echo '{
-            "username": "github-actions",
-            "apikey": "${{ secrets.GITHUB_TOKEN }}",
-          }' > github_helper/credentials.json
+          echo '{"username": "github-actions"}' > github_helper/credentials.json
 
       - name: Generate changelog between ${{ env.PREVIOUS_TAG }} and ${{ github.ref_name }}
         id: changelog
