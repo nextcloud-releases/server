@@ -42,10 +42,9 @@ jobs:
         shell: bash
         run: |
           cd server
-          git log --decorate --oneline
-          git log --decorate --oneline | egrep '^[0-9a-f]+ \((HEAD, )?tag: '
-          git log --decorate --oneline | egrep '^[0-9a-f]+ \((HEAD, )?tag: ' | sed -r 's/^.+tag: ([^ ]+)[,\)].+$/\1/g'
+          # Print all tags
           git log --decorate --oneline | egrep '^[0-9a-f]+ \((HEAD, )?tag: ' | sed -r 's/^.+tag: ([^ ]+)[,\)].+$/\1/g' | grep -v 'rc\|beta\|alpha'
+          # Get the current and previous tag
           TAGS=$(git log --decorate --oneline | egrep '^[0-9a-f]+ \((HEAD, )?tag: ' | sed -r 's/^.+tag: ([^ ]+)[,\)].+$/\1/g' | grep -v 'rc\|beta\|alpha')
           CURRENT_TAG=$(echo "$TAGS" | head -n 1)
           PREVIOUS_TAG=$(echo "$TAGS" | sed -n '2p')
@@ -78,7 +77,7 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          cd changelog
+          cd github_helper/changelog
           composer install
           php index.php generate:changelog --no-bots server ${{ env.PREVIOUS_TAG }} ${{ github.ref_name }} > changelog.md
           echo "CHANGELOG=$(cat changelog.md)" >> $GITHUB_ENV
