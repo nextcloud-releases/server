@@ -1,0 +1,79 @@
+name: Sync Branches from Upstream
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  get-branches:
+    runs-on: ubuntu-latest
+    outputs:
+      branches: ${{ steps.filter-branches.outputs.branches }}
+    steps:
+      - name: Checkout releases repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Get branches to sync
+        id: filter-branches
+        run: |
+          # Get all remote branches
+          git fetch origin
+          
+          # List all branches and filter for stable[0-9]{2} and master
+          branches=$(git branch -r | grep -E 'origin/(stable[0-9]{2}|master)$' | sed 's/origin\///' | sed 's/^[[:space:]]*//' | sort)
+          
+          # Convert to JSON array for matrix
+          json_branches="["
+          first=true
+          for branch in $branches; do
+            if [ "$first" = true ]; then
+              first=false
+            else
+              json_branches+=","
+            fi
+            json_branches+="\"$branch\""
+          done
+          json_branches+="]"
+          
+          echo "branches=$json_branches" >> $GITHUB_OUTPUT
+          echo "Found branches to sync: $json_branches"
+
+  sync-branches:
+    needs: get-branches
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: ${{ fromJson(needs.get-branches.outputs.branches) }}
+      fail-fast: false
+    steps:
+      - name: Checkout upstream repo
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: nextcloud/server
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add releases remote
+        run: |
+          git remote add releases https://github.com/nextcloud-releases/server.git
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch releases remote
+        run: |
+          git fetch releases
+
+      - name: Force sync to releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Force push the upstream branch to releases
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/nextcloud-releases/server.git ${{ matrix.branch }}:${{ matrix.branch }} --force
