@@ -1,0 +1,46 @@
+name: Sync Branches from Upstream
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-upstream-branches
+  cancel-in-progress: true
+
+jobs:
+  sync-branch:
+    name: Sync ${{ matrix.branch }} branch
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        branch:
+          - master
+          - stable31
+          - stable30
+
+    steps:
+      - name: Restore cached git repository
+        uses: buildjet/cache@3e70d19e31d6a8030aeddf6ed8dbe601f94d09f4 # v4.0.2
+        with:
+          path: .git
+          key: git-repo
+
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+          ref: ${{ matrix.branch }}
+
+      - name: Sync upstream changes to ${{ matrix.branch }}
+        uses: aormsby/Fork-Sync-With-Upstream-action@1090e365224fc834e7e1de521c417ded2d6fcb53 # v3.4.1
+        with:
+          target_sync_branch: ${{ matrix.branch }}
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          upstream_sync_branch: ${{ matrix.branch }}
+          upstream_sync_repo: nextcloud/server
+          upstream_repo_access_token: ${{ secrets.GITHUB_TOKEN }}
