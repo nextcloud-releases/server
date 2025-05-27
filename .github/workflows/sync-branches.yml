@@ -48,13 +48,21 @@ jobs:
           echo "branches=$json_branches" >> $GITHUB_OUTPUT
           echo "Found branches to sync: $json_branches"
 
+      - name: Save repository to cache
+        uses: buildjet/cache/save@3e70d19e31d6a8030aeddf6ed8dbe601f94d09f4 # v4.0.2
+        with:
+          path: .git
+          key: git-repo-releases
+
   sync-branches:
     needs: get-branches
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         branch: ${{ fromJson(needs.get-branches.outputs.branches) }}
       fail-fast: false
+
     steps:
       - name: Restore cached git repository
         uses: buildjet/cache@3e70d19e31d6a8030aeddf6ed8dbe601f94d09f4 # v4.0.2
@@ -89,3 +97,10 @@ jobs:
         run: |
           # Force push the upstream branch to releases
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/nextcloud-releases/server.git ${{ matrix.branch }}:${{ matrix.branch }} --force
+
+      - name: Save repository to cache
+        if: matrix.branch == 'master'
+        uses: buildjet/cache/save@3e70d19e31d6a8030aeddf6ed8dbe601f94d09f4 # v4.0.2
+        with:
+          path: .git
+          key: git-repo-upstream
