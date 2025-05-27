@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
 
 jobs:
   get-branches:
@@ -28,10 +28,10 @@ jobs:
         run: |
           # Get all remote branches
           git fetch origin
-          
+
           # List all branches and filter for stable[0-9]{2} and master
           branches=$(git branch -r | grep -E 'origin/(stable[0-9]{2}|master)$' | sed 's/origin\///' | sed 's/^[[:space:]]*//' | sort)
-          
+
           # Convert to JSON array for matrix
           json_branches="["
           first=true
@@ -44,7 +44,7 @@ jobs:
             json_branches+="\"$branch\""
           done
           json_branches+="]"
-          
+
           echo "branches=$json_branches" >> $GITHUB_OUTPUT
           echo "Found branches to sync: $json_branches"
 
@@ -80,6 +80,7 @@ jobs:
           token: ${{ secrets.WORKFLOW_TOKEN }}
 
       - name: Add releases remote
+        continue-on-error: true
         run: |
           git remote add releases https://github.com/nextcloud-releases/server.git
 
