@@ -57,6 +57,7 @@ jobs:
   sync-branches:
     needs: get-branches
     runs-on: ubuntu-latest
+    environment: server-sync
 
     strategy:
       matrix:
@@ -76,7 +77,7 @@ jobs:
           repository: nextcloud/server
           ref: ${{ matrix.branch }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.WORKFLOW_TOKEN }}
 
       - name: Add releases remote
         run: |
@@ -93,10 +94,10 @@ jobs:
 
       - name: Force sync to releases
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
         run: |
           # Force push the upstream branch to releases
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/nextcloud-releases/server.git ${{ matrix.branch }}:${{ matrix.branch }} --force
+          git push https://x-access-token:${{ secrets.WORKFLOW_TOKEN }}@github.com/nextcloud-releases/server.git ${{ matrix.branch }}:${{ matrix.branch }} --force
 
       - name: Save repository to cache
         if: matrix.branch == 'master'
