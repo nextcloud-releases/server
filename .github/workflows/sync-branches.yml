@@ -48,6 +48,16 @@ jobs:
           echo "branches=$json_branches" >> $GITHUB_OUTPUT
           echo "Found branches to sync: $json_branches"
 
+      # This is a trick to force update the cache
+      # https://github.com/actions/cache/issues/342
+      - name: Delete old cache
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Using `--repo` makes it so that this step doesn't require checking out the
+        # repo first.
+        run: gh cache delete --repo ${{ github.repository }} git-repo-releases
+
       - name: Save repository to cache
         uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
@@ -99,6 +109,17 @@ jobs:
         run: |
           # Force push the upstream branch to releases
           git push https://x-access-token:${{ secrets.WORKFLOW_TOKEN }}@github.com/nextcloud-releases/server.git ${{ matrix.branch }}:${{ matrix.branch }} --force
+
+      # This is a trick to force update the cache
+      # https://github.com/actions/cache/issues/342
+      - name: Delete old cache
+        if: matrix.branch == 'master'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Using `--repo` makes it so that this step doesn't require checking out the
+        # repo first.
+        run: gh cache delete --repo ${{ github.repository }} git-repo-upstream
 
       - name: Save repository to cache
         if: matrix.branch == 'master'
