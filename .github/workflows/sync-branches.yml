@@ -12,25 +12,13 @@ jobs:
     outputs:
       branches: ${{ steps.filter-branches.outputs.branches }}
     steps:
-      - name: Restore cached git repository
-        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-        with:
-          path: .git
-          key: git-repo-releases
-
-      - name: Checkout releases repo
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-
       - name: Get branches to sync
         id: filter-branches
         run: |
-          # Get all remote branches
-          git fetch origin
-
-          # List all branches and filter for stable[0-9]{2} and master
-          branches=$(git branch -r | grep -E 'origin/(stable[0-9]{2}|master)$' | sed 's/origin\///' | sed 's/^[[:space:]]*//' | sort)
+          # Use GitHub API to get branches directly - much faster than git clone
+          branches=$(curl -s -H "Authorization: token ${{ secrets.WORKFLOW_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository_owner }}/server/branches?per_page=100" | \
+            jq -r '.[] | select(.name | test("^(stable[0-9]{2}|master)$")) | .name' | sort)
 
           # Convert to JSON array for matrix
           json_branches="["
@@ -47,22 +35,6 @@ jobs:
 
           echo "branches=$json_branches" >> $GITHUB_OUTPUT
           echo "Found branches to sync: $json_branches"
-
-      # This is a trick to force update the cache
-      # https://github.com/actions/cache/issues/342
-      - name: Delete old cache
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        # Using `--repo` makes it so that this step doesn't require checking out the
-        # repo first.
-        run: gh cache delete --repo ${{ github.repository }} git-repo-releases
-
-      - name: Save repository to cache
-        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-        with:
-          path: .git
-          key: git-repo-releases
 
   sync-branches:
     needs: get-branches
