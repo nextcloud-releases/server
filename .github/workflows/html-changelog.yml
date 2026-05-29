@@ -1,0 +1,86 @@
+name: Generate HTML Changelog
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+
+    # Only run for stable release tags (vX.Y.Z), skip RCs/betas
+    if: >-
+      github.event.release.tag_name != '' &&
+      contains(github.event.release.tag_name, '.') &&
+      !contains(github.event.release.tag_name, 'rc') &&
+      !contains(github.event.release.tag_name, 'beta') &&
+      !contains(github.event.release.tag_name, 'alpha')
+
+    steps:
+      - name: Determine previous tag
+        id: prev-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_tag="${{ github.event.release.tag_name }}"
+          echo "Current tag: $current_tag"
+
+          # Extract major.minor prefix (e.g., v33.0 from v33.0.4)
+          major_minor=$(echo "$current_tag" | grep -oP '^v\d+\.\d+')
+          if [ -z "$major_minor" ]; then
+            echo "::error::Could not parse major.minor from tag $current_tag"
+            exit 1
+          fi
+
+          # Get all tags in the same major.minor series, sorted by version
+          prev_tag=$(gh api "repos/${{ github.repository }}/git/matching-refs/tags/${major_minor}." \
+            --jq '.[].ref | sub("refs/tags/"; "")' | \
+            grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | \
+            sort -V | \
+            grep -B1 "^${current_tag}$" | \
+            head -1)
+
+          if [ "$prev_tag" = "$current_tag" ] || [ -z "$prev_tag" ]; then
+            echo "::error::Could not determine previous tag for $current_tag (first in series?)"
+            exit 1
+          fi
+
+          echo "Previous tag: $prev_tag"
+          echo "prev_tag=$prev_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout github_helper
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: nextcloud/github_helper
+          path: github_helper
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@9e72090525849c5e82e596468b86eb55e9cc5401 # v2.32.0
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install dependencies
+        working-directory: github_helper/changelog
+        run: composer install --no-dev --no-interaction --prefer-dist
+
+      - name: Generate HTML changelog
+        working-directory: github_helper/changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          current_tag="${{ github.event.release.tag_name }}"
+          prev_tag="${{ steps.prev-tag.outputs.prev_tag }}"
+          php index.php generate:changelog server "$prev_tag" "$current_tag" \
+            --format=html --no-bots > "$current_tag.html"
+          echo "Generated changelog: $(wc -l < "$current_tag.html") lines"
+
+      - name: Attach changelog to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          current_tag="${{ github.event.release.tag_name }}"
+          gh release upload "$current_tag" \
+            "github_helper/changelog/$current_tag.html" \
+            --repo "${{ github.repository }}" \
+            --clobber
