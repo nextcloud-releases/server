@@ -103,7 +103,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd github_helper/changelog
-          php index.php generate:changelog --no-bots --format=forum server ${{ env.PREVIOUS_TAG }} ${{ env.RELEASE_TAG }} > changelog.md
+          php index.php generate:changelog --no-bots --format=forum server ${{ env.PREVIOUS_TAG }} ${{ env.RELEASE_TAG }} > "changelog-${{ env.RELEASE_TAG }}.md"
 
       # Since this action only runs on nextcloud-releases, ignoring is okay
       - name: Generate HTML changelog between ${{ env.PREVIOUS_TAG }} and ${{ env.RELEASE_TAG }} # zizmor: ignore[template-injection]
@@ -111,7 +111,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd github_helper/changelog
-          php index.php generate:changelog --no-bots --format=html server ${{ env.PREVIOUS_TAG }} ${{ env.RELEASE_TAG }} > "${{ env.RELEASE_TAG }}.html"
+          php index.php generate:changelog --no-bots --format=html server ${{ env.PREVIOUS_TAG }} ${{ env.RELEASE_TAG }} > "changelog-${{ env.RELEASE_TAG }}.html"
 
       # Since this action only runs on nextcloud-releases, ignoring is okay
       - name: Set changelog to release # zizmor: ignore[template-injection]
@@ -119,12 +119,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
          cd server
-         gh release edit ${{ env.RELEASE_TAG }} --notes-file "../github_helper/changelog/changelog.md" --title "${{ env.RELEASE_TAG }}"
+         gh release edit ${{ env.RELEASE_TAG }} --notes-file "../github_helper/changelog/changelog-${{ env.RELEASE_TAG }}.md" --title "${{ env.RELEASE_TAG }}"
 
       # Since this action only runs on nextcloud-releases, ignoring is okay
-      - name: Attach HTML changelog to release # zizmor: ignore[template-injection]
+      - name: Attach changelog files to release # zizmor: ignore[template-injection]
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
          cd server
-         gh release upload ${{ env.RELEASE_TAG }} "../github_helper/changelog/${{ env.RELEASE_TAG }}.html" --clobber
+         gh release upload ${{ env.RELEASE_TAG }} \
+           "../github_helper/changelog/changelog-${{ env.RELEASE_TAG }}.md" \
+           "../github_helper/changelog/changelog-${{ env.RELEASE_TAG }}.html" \
+           --clobber
