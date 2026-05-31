@@ -1,0 +1,16 @@
+# Stub to allow workflow_dispatch from feature branches
+# Will be replaced by the full workflow from PR #74
+name: Build and compare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and compare (e.g., v34.0.1)'
+        required: true
+
+jobs:
+  stub:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "This is a stub. Run from the feature branch instead."
