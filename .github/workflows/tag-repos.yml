@@ -1,0 +1,147 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+name: Tag all repositories on release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to create (e.g., v34.0.1)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Check actor permission
+        uses: skjnldsv/check-actor-permission@69e92a3c4711150929bca9fcf34448c5bf5526e7 # v3.0
+        with:
+          require: write
+
+      - name: Checkout config
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Determine branch and config
+        id: config
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          echo "Tag: $TAG"
+
+          # Validate tag format
+          if [[ ! "$TAG" =~ ^v[1-9][0-9]*\.[0-9]+\.[0-9]+(alpha|beta|rc)?[0-9]*$ ]]; then
+            echo "::error::Invalid tag format: $TAG (expected vXX.Y.Z[alphaN|betaN|rcN])"
+            exit 1
+          fi
+
+          # Extract major version and determine branch
+          MAJOR=$(echo "$TAG" | sed 's/^v//' | cut -d. -f1)
+          if [[ "$TAG" =~ \.0\.0(alpha|beta) ]]; then
+            BRANCH="master"
+          else
+            BRANCH="stable${MAJOR}"
+          fi
+
+          # Find config file
+          if [ "$BRANCH" = "master" ]; then
+            CONFIG=$(ls stable*.json 2>/dev/null | sort -V | tail -1)
+          else
+            CONFIG="stable${MAJOR}.json"
+          fi
+
+          if [ ! -f "$CONFIG" ]; then
+            echo "::error::Config file $CONFIG not found. Create it for NC${MAJOR}."
+            exit 1
+          fi
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "config=$CONFIG" >> "$GITHUB_OUTPUT"
+          echo "::notice::Tagging repos from $CONFIG at $BRANCH HEAD → $TAG"
+
+      - name: Tag all repositories
+        env:
+          GH_TOKEN: ${{ secrets.TAG_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          BRANCH="${{ steps.config.outputs.branch }}"
+          CONFIG="${{ steps.config.outputs.config }}"
+
+          TOTAL=0
+          SUCCESS=0
+          SKIPPED=0
+          FAILED=0
+
+          {
+            echo "## Tag results: $TAG"
+            echo ""
+            echo "| Repository | Branch | Status | Commit |"
+            echo "|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          jq -r '.[]' "$CONFIG" | while read -r repo; do
+            TOTAL=$((TOTAL + 1))
+
+            # Determine the branch for this repo
+            REPO_BRANCH="$BRANCH"
+            if [ "$BRANCH" = "master" ]; then
+              case "$repo" in
+                */text|*/twofactor_nextcloud_notification|*/app_api)
+                  REPO_BRANCH="main"
+                  ;;
+              esac
+            fi
+
+            echo -n "$repo@$REPO_BRANCH → $TAG ... "
+
+            # Get branch HEAD SHA
+            SHA=$(gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" --jq '.object.sha' 2>/dev/null)
+            if [ -z "$SHA" ]; then
+              echo "SKIP (branch not found)"
+              echo "| \`$repo\` | $REPO_BRANCH | branch not found | - |" >> "$GITHUB_STEP_SUMMARY"
+              FAILED=$((FAILED + 1))
+              continue
+            fi
+
+            # Check if tag already exists
+            EXISTING=$(gh api "repos/$repo/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null)
+            if [ -n "$EXISTING" ]; then
+              echo "EXISTS (${EXISTING:0:8})"
+              echo "| \`$repo\` | $REPO_BRANCH | already tagged | \`${EXISTING:0:8}\` |" >> "$GITHUB_STEP_SUMMARY"
+              SKIPPED=$((SKIPPED + 1))
+              continue
+            fi
+
+            # Create lightweight tag via API
+            if gh api "repos/$repo/git/refs" \
+              -f "ref=refs/tags/$TAG" \
+              -f "sha=$SHA" > /dev/null 2>&1; then
+              echo "OK (${SHA:0:8})"
+              echo "| \`$repo\` | $REPO_BRANCH | tagged | \`${SHA:0:8}\` |" >> "$GITHUB_STEP_SUMMARY"
+              SUCCESS=$((SUCCESS + 1))
+            else
+              echo "FAILED"
+              echo "| \`$repo\` | $REPO_BRANCH | **failed** | - |" >> "$GITHUB_STEP_SUMMARY"
+              FAILED=$((FAILED + 1))
+            fi
+          done
+
+          {
+            echo ""
+            echo "**Tagged: $SUCCESS | Skipped: $SKIPPED | Failed: $FAILED**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::$FAILED repos failed to tag"
+            exit 1
+          fi
