@@ -1,0 +1,137 @@
+[
+	{
+		"id": "server",
+		"repo": "nextcloud/server",
+		"type": "server"
+	},
+	{
+		"id": "3rdparty",
+		"repo": "nextcloud/3rdparty",
+		"type": "core"
+	},
+	{
+		"id": "updater",
+		"repo": "nextcloud/updater",
+		"type": "extra"
+	},
+	{
+		"id": "example-files",
+		"repo": "nextcloud/example-files",
+		"type": "extra"
+	},
+	{
+		"id": "activity",
+		"repo": "nextcloud/activity"
+	},
+	{
+		"id": "circles",
+		"repo": "nextcloud/circles",
+		"composer": true,
+		"composer_args": "--no-dev --quiet"
+	},
+	{
+		"id": "files_downloadlimit",
+		"repo": "nextcloud/files_downloadlimit"
+	},
+	{
+		"id": "files_pdfviewer",
+		"repo": "nextcloud/files_pdfviewer"
+	},
+	{
+		"id": "firstrunwizard",
+		"repo": "nextcloud/firstrunwizard"
+	},
+	{
+		"id": "logreader",
+		"repo": "nextcloud/logreader"
+	},
+	{
+		"id": "nextcloud_announcements",
+		"repo": "nextcloud/nextcloud_announcements"
+	},
+	{
+		"id": "notifications",
+		"repo": "nextcloud/notifications",
+		"composer": true,
+		"composer_args": "--no-dev -a --quiet"
+	},
+	{
+		"id": "files_lock",
+		"repo": "nextcloud/files_lock"
+	},
+	{
+		"id": "office",
+		"repo": "nextcloud/office"
+	},
+	{
+		"id": "password_policy",
+		"repo": "nextcloud/password_policy"
+	},
+	{
+		"id": "photos",
+		"repo": "nextcloud/photos",
+		"composer": true,
+		"composer_args": "--no-dev --optimize-autoloader --quiet"
+	},
+	{
+		"id": "privacy",
+		"repo": "nextcloud/privacy"
+	},
+	{
+		"id": "recommendations",
+		"repo": "nextcloud/recommendations"
+	},
+	{
+		"id": "serverinfo",
+		"repo": "nextcloud/serverinfo"
+	},
+	{
+		"id": "support",
+		"repo": "nextcloud-gmbh/support",
+		"private": true
+	},
+	{
+		"id": "survey_client",
+		"repo": "nextcloud/survey_client"
+	},
+	{
+		"id": "text",
+		"repo": "nextcloud/text"
+	},
+	{
+		"id": "viewer",
+		"repo": "nextcloud/viewer"
+	},
+	{
+		"id": "bruteforcesettings",
+		"repo": "nextcloud/bruteforcesettings",
+		"composer": true,
+		"composer_args": "--no-dev --optimize-autoloader --quiet"
+	},
+	{
+		"id": "related_resources",
+		"repo": "nextcloud/related_resources",
+		"composer": true,
+		"composer_args": "--no-dev --optimize-autoloader --quiet"
+	},
+	{
+		"id": "suspicious_login",
+		"repo": "nextcloud/suspicious_login",
+		"composer": true,
+		"composer_args": "--no-dev --optimize-autoloader --quiet"
+	},
+	{
+		"id": "twofactor_totp",
+		"repo": "nextcloud/twofactor_totp",
+		"composer": true,
+		"composer_args": "--no-dev --optimize-autoloader --quiet"
+	},
+	{
+		"id": "twofactor_nextcloud_notification",
+		"repo": "nextcloud/twofactor_nextcloud_notification"
+	},
+	{
+		"id": "app_api",
+		"repo": "nextcloud/app_api"
+	}
+]

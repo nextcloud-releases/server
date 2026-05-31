@@ -1,0 +1,546 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+name: Build and compare release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to build and compare (e.g., v34.0.1)'
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  COMPOSER_ALLOW_SUPERUSER: '1'
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+      branch: ${{ steps.parse.outputs.branch }}
+      channel: ${{ steps.parse.outputs.channel }}
+      major: ${{ steps.parse.outputs.major }}
+      version: ${{ steps.parse.outputs.version }}
+      tag: ${{ steps.parse.outputs.tag }}
+
+    steps:
+      - name: Check actor permission
+        uses: skjnldsv/check-actor-permission@69e92a3c4711150929bca9fcf34448c5bf5526e7 # v3.0
+        with:
+          require: write
+
+      - name: Checkout config
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Parse version
+        id: parse
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          VERSION=$(echo "$TAG" | sed 's/^v//')
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+
+          if [[ "$VERSION" =~ \.0\.0(alpha|beta) ]]; then
+            BRANCH="master"
+            CHANNEL="beta"
+          else
+            BRANCH="stable${MAJOR}"
+            CHANNEL="stable"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+
+          echo "::notice::Building NC${MAJOR} v${VERSION} from ${BRANCH} (channel: ${CHANNEL})"
+
+      - name: Generate build matrix
+        id: generate
+        run: |
+          BRANCH="${{ steps.parse.outputs.branch }}"
+          MAJOR="${{ steps.parse.outputs.major }}"
+
+          if [ "$BRANCH" = "master" ]; then
+            CONFIG="build/master.json"
+          else
+            CONFIG="build/stable${MAJOR}.json"
+          fi
+
+          if [ ! -f "$CONFIG" ]; then
+            echo "::error::Config file $CONFIG not found. Create it for NC${MAJOR} releases."
+            exit 1
+          fi
+
+          MATRIX=$(jq -c \
+            --arg branch "$BRANCH" \
+            'map(. + {
+              branch: (.branch // $branch),
+              type: (.type // "app"),
+              run_composer: (.composer // false),
+              composer_args: (.composer_args // ""),
+              private: (.private // false)
+            })
+            | {include: .}
+            ' "$CONFIG")
+
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Generated matrix with $(echo "$MATRIX" | jq '.include | length') entries"
+
+  build-docs:
+    needs: init
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout documentation (gh-pages)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: nextcloud/documentation
+          ref: gh-pages
+
+      - name: Extract docs for version
+        run: |
+          MAJOR="${{ needs.init.outputs.major }}"
+          mkdir -p /tmp/docs/user_manual/en /tmp/docs/admin_manual
+
+          for base in "server/${MAJOR}" "server/stable${MAJOR}" "${MAJOR}" "."; do
+            if [ -d "${base}/user_manual/en" ]; then
+              cp -a "${base}/user_manual/en/"* /tmp/docs/user_manual/en/
+              break
+            fi
+          done
+
+          for base in "server/${MAJOR}" "server/stable${MAJOR}" "${MAJOR}" "."; do
+            if [ -d "${base}/admin_manual" ]; then
+              cp -a "${base}/admin_manual/"* /tmp/docs/admin_manual/
+              break
+            fi
+          done
+
+          find . -name "Nextcloud_User_Manual.pdf" -exec cp -a {} /tmp/docs/ \; 2>/dev/null
+
+      - name: Upload docs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: docs
+          path: /tmp/docs/
+          retention-days: 1
+
+  fetch-and-build:
+    needs: init
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+
+    steps:
+      - name: Checkout ${{ matrix.id }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: ${{ matrix.repo }}
+          ref: ${{ matrix.branch }}
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+
+      - name: Save server commit hash
+        if: matrix.type == 'server'
+        run: git rev-parse HEAD > release-commit-hash
+
+      - name: Set up PHP
+        if: matrix.run_composer == true
+        uses: shivammathur/setup-php@9e72090525849c5e82e596468b86eb55e9cc5401 # v2.32.0
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Run composer install
+        if: matrix.run_composer == true
+        run: composer install ${{ matrix.composer_args }}
+
+      - name: Clean server dev files
+        if: matrix.type == 'server'
+        run: |
+          if [ -f ".nextcloudignore" ]; then
+            git ls-files -ic --exclude-from=.nextcloudignore -z | xargs -0 -r -n 10 -- rm -fr
+            find . -empty -type d -delete
+          else
+            rm -rf .babelrc .codecov.yml .devcontainer .drone.yml .editorconfig
+            rm -rf .envrc .eslintignore .eslintrc.js .git-blame-ignore-revs
+            rm -rf .gitattributes .github .gitignore .gitmodules .idea .jshintrc
+            rm -rf .mailmap .npmignore .php-cs-fixer.dist.php .php_cs.dist
+            rm -rf .pre-commit-config.yaml .scrutinizer.yml .tag .tx
+            rm -rf CHANGELOG.md CODE_OF_CONDUCT.md COPYING-README DESIGN.md
+            rm -rf Makefile README.md SECURITY.md __mocks__ __tests__
+            rm -rf apps/dav/bin apps/testing
+            rm -rf autotest-checkers.sh autotest-external.sh autotest-js.sh autotest.sh
+            rm -rf babel.config.js build codecov.yml contribute custom.d.ts
+            rm -rf cypress cypress.config.ts cypress.d.ts
+            rm -rf eslint.config.js eslint.config.mjs flake.lock flake.nix
+            rm -rf jest.config.js jest.config.ts openapi.json
+            rm -rf psalm-ncu.xml psalm-ocp.xml psalm.xml stylelint.config.js
+            rm -rf tests tsconfig.json vendor-bin vite.config.ts
+            rm -rf vitest.config.mts vitest.config.ts
+            rm -rf webpack.common.cjs webpack.common.js webpack.config.js
+            rm -rf webpack.dev.js webpack.modules.cjs webpack.modules.js webpack.prod.js
+            rm -rf window.d.ts
+            rm -rf .direnv .well-known config/config.php data
+          fi
+
+      - name: Clean app dev files
+        if: matrix.type == 'app'
+        run: |
+          if [ -f ".nextcloudignore" ]; then
+            APP_DIR=$(pwd)
+            while IFS= read -r line || [[ -n "$line" ]]; do
+              pattern=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/\r$//')
+              [[ -z "$pattern" || "$pattern" == \#* ]] && continue
+              if [[ "$pattern" == /* ]]; then
+                pattern="${pattern#/}"
+                # shellcheck disable=SC2086
+                for match in $APP_DIR/$pattern; do
+                  [ -e "$match" ] && rm -rf "$match"
+                done
+              else
+                find "$APP_DIR" -name "$pattern" -exec rm -rf {} + 2>/dev/null || true
+              fi
+            done < .nextcloudignore
+          fi
+
+          DEV_PATTERNS=(
+            .babelrc .babelrc.js .codecov.yml .devcontainer .drone.yml .editorconfig
+            .eslintrc.cjs .eslintrc.js .eslintrc.json .eslintignore
+            .git/ .gitattributes .github .gitignore .git-blame-ignore-revs
+            .jshintrc .l10nignore .lgtm .nextcloudignore .npmignore .noopenapi
+            .php_cs.dist .php-cs-fixer.dist.php .scrutinizer.yml .stylelintignore
+            .stylelintrc.js .travis.yml .tx/
+            babel.config.js build-js/ build.xml
+            check-handlebars-templates.sh codecov.yml compile-handlebars-templates.sh
+            CONTRIBUTING.md
+            cypress.config.js cypress.config.ts cypress.json cypress/
+            issue_template.md jest-raw-loader.js jest.config.js jsconfig.json
+            krankerl.toml l10n/.gitkeep Makefile postcss.config.js psalm.xml
+            .prettierignore
+            README.md rector.php renovate.json screenshots/ src/
+            stylelint.config.js stylelint.config.cjs tests/ tsconfig.json
+            vite.config.js vite.config.ts vitest.config.js vitest.config.ts
+            webpack.common.js webpack.config.js webpack.dev.js webpack.js webpack.prod.js
+          )
+
+          for pattern in "${DEV_PATTERNS[@]}"; do
+            rm -rf "$pattern"
+            if [[ "$pattern" != */ ]]; then
+              rm -rf "${pattern}.license"
+            fi
+          done
+
+          find . -maxdepth 1 \( -name "*.config.js" -o -name "*.config.ts" -o -name "*.config.mjs" -o -name "*.config.cjs" \) -delete 2>/dev/null || true
+
+      - name: Remove .git
+        run: rm -rf .git
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.id }}
+          path: .
+          include-hidden-files: true
+          retention-days: 1
+
+  assemble:
+    needs: [init, fetch-and-build, build-docs]
+    if: always() && needs.fetch-and-build.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@9e72090525849c5e82e596468b86eb55e9cc5401 # v2.32.0
+        with:
+          php-version: '8.3'
+
+      - name: Assemble server
+        run: |
+          mv server /tmp/nextcloud
+
+          rm -rf /tmp/nextcloud/3rdparty
+          mv 3rdparty /tmp/nextcloud/3rdparty
+          rm -rf /tmp/nextcloud/3rdparty/.github /tmp/nextcloud/3rdparty/.gitignore /tmp/nextcloud/3rdparty/README.md
+
+          for artifact_dir in */; do
+            id=$(basename "$artifact_dir")
+            case "$id" in updater|example-files|docs|release) continue ;; esac
+            mv "$artifact_dir" "/tmp/nextcloud/apps/$id"
+          done
+
+          mkdir -p /tmp/nextcloud/updater
+          cp updater/index.php /tmp/nextcloud/updater/index.php
+          cp updater/updater.phar /tmp/nextcloud/updater/updater.phar
+          rm -rf updater
+
+          rm -rf /tmp/nextcloud/core/skeleton
+          mv example-files /tmp/nextcloud/core/skeleton
+
+      - name: Integrate documentation
+        run: |
+          if [ -d docs ] && [ "$(ls -A docs)" ]; then
+            rm -f /tmp/nextcloud/core/doc/user/index.php /tmp/nextcloud/core/doc/admin/index.php
+            [ -d docs/user_manual/en ] && cp -a docs/user_manual/en/* /tmp/nextcloud/core/doc/user/
+            [ -d docs/admin_manual ] && cp -a docs/admin_manual/* /tmp/nextcloud/core/doc/admin/
+            [ -f docs/Nextcloud_User_Manual.pdf ] && cp -a "docs/Nextcloud_User_Manual.pdf" "/tmp/nextcloud/core/skeleton/Nextcloud Manual.pdf"
+          fi
+          rm -rf docs
+
+      - name: Clean dev files from core apps
+        run: |
+          DEV_PATTERNS=(
+            .babelrc .babelrc.js .codecov.yml .devcontainer .drone.yml .editorconfig
+            .eslintrc.cjs .eslintrc.js .eslintrc.json .eslintignore
+            .gitattributes .github .gitignore .git-blame-ignore-revs
+            .jshintrc .l10nignore .lgtm .nextcloudignore .npmignore .noopenapi
+            .php_cs.dist .php-cs-fixer.dist.php .scrutinizer.yml .stylelintignore
+            .stylelintrc.js .travis.yml .tx
+            babel.config.js build-js build.xml
+            check-handlebars-templates.sh codecov.yml compile-handlebars-templates.sh
+            CONTRIBUTING.md
+            cypress.config.js cypress.config.ts cypress.json cypress
+            issue_template.md jest-raw-loader.js jest.config.js jsconfig.json
+            krankerl.toml l10n/.gitkeep Makefile postcss.config.js psalm.xml
+            .prettierignore
+            README.md rector.php renovate.json screenshots src
+            stylelint.config.js stylelint.config.cjs tests tsconfig.json
+            vite.config.js vite.config.ts vitest.config.js vitest.config.ts
+            webpack.common.js webpack.config.js webpack.dev.js webpack.js webpack.prod.js
+          )
+
+          shopt -s nullglob
+          for dir in /tmp/nextcloud/apps/*/ /tmp/nextcloud/core/ /tmp/nextcloud/settings/; do
+            [ -d "$dir" ] || continue
+            if [ -f "$dir/.nextcloudignore" ]; then
+              real_dir=$(realpath "$dir")
+              while IFS= read -r line || [[ -n "$line" ]]; do
+                pattern=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/\r$//')
+                [[ -z "$pattern" || "$pattern" == \#* ]] && continue
+                if [[ "$pattern" == /* ]]; then
+                  pattern="${pattern#/}"
+                  # shellcheck disable=SC2086
+                  for match in $real_dir/$pattern; do
+                    [ -e "$match" ] && rm -rf "$match"
+                  done
+                else
+                  find "$real_dir" -name "$pattern" -exec rm -rf {} + 2>/dev/null || true
+                fi
+              done < "$dir/.nextcloudignore"
+            fi
+            for pattern in "${DEV_PATTERNS[@]}"; do
+              rm -rf "$dir/$pattern"
+              [[ "$pattern" != */ ]] && rm -rf "$dir/${pattern}.license"
+            done
+            find "$dir" -maxdepth 1 \( -name "*.config.js" -o -name "*.config.ts" -o -name "*.config.mjs" -o -name "*.config.cjs" \) -delete 2>/dev/null || true
+          done
+          shopt -u nullglob
+
+      - name: Final cleanup
+        run: |
+          find /tmp/nextcloud -name .git -exec rm -rf {} + 2>/dev/null || true
+          rm -f /tmp/nextcloud/config/config.php
+          rm -rf /tmp/nextcloud/data
+
+      - name: Update version.php
+        env:
+          CHANNEL: ${{ needs.init.outputs.channel }}
+          BRANCH: ${{ needs.init.outputs.branch }}
+        run: |
+          COMMIT_HASH=$(cat /tmp/nextcloud/release-commit-hash)
+          rm -f /tmp/nextcloud/release-commit-hash
+          export BUILD_STRING="$(date -u +%Y-%m-%dT%H:%M:%S+00:00) ${COMMIT_HASH}"
+
+          php << 'EOPHP'
+          <?php
+          $file = '/tmp/nextcloud/version.php';
+          require($file);
+          $channel = getenv('CHANNEL');
+          $branch = getenv('BRANCH');
+          $build = getenv('BUILD_STRING');
+          $content = "<?php \n";
+          $content .= '$OC_Version = array(' . implode(',', $OC_Version) . ')' . ";\n";
+          $content .= '$OC_VersionString = \'' . $OC_VersionString . "';\n";
+          if ($branch !== 'master') {
+              $content .= '$OC_Edition = \'' . "';\n";
+          }
+          $content .= '$OC_Channel = \'' . $channel . "';\n";
+          if (isset($OC_VersionCanBeUpgradedFrom)) {
+              $content .= '$OC_VersionCanBeUpgradedFrom = ' . var_export($OC_VersionCanBeUpgradedFrom, true) . ";\n";
+          }
+          $content .= '$OC_Build = \'' . $build . "';\n";
+          $content .= '$vendor = \'nextcloud\';' . "\n";
+          file_put_contents($file, $content);
+          EOPHP
+
+      - name: Sign release
+        env:
+          SIGN_KEY: ${{ secrets.SIGN_PRIVATE_KEY }}
+          SIGN_CERT: ${{ secrets.SIGN_CERTIFICATE }}
+        run: |
+          if [ -z "$SIGN_KEY" ]; then
+            echo "::warning::SIGN_PRIVATE_KEY not set, skipping code signing"
+            exit 0
+          fi
+          NC=/tmp/nextcloud
+          echo "$SIGN_KEY" > /tmp/signing-key.pem
+          if [ -n "$SIGN_CERT" ]; then
+            echo "$SIGN_CERT" > /tmp/signing-cert.pem
+            CERT=/tmp/signing-cert.pem
+          else
+            CERT="$NC/resources/codesigning/core.crt"
+          fi
+          chmod 755 "$NC/occ"
+          chmod 777 "$NC/config"
+          php "$NC/occ" integrity:sign-core --privateKey=/tmp/signing-key.pem --certificate="$CERT" --path "$NC"
+          for app_dir in "$NC"/apps/*/; do
+            php "$NC/occ" integrity:sign-app --privateKey=/tmp/signing-key.pem --certificate="$CERT" --path="$app_dir"
+          done
+          rm -f /tmp/signing-key.pem /tmp/signing-cert.pem "$NC/config/config.php"
+
+      - name: Set permissions and create archives
+        run: |
+          VERSION="${{ needs.init.outputs.version }}"
+          find /tmp/nextcloud -type d -exec chmod 755 {} \;
+          find /tmp/nextcloud -type f -exec chmod 644 {} \;
+          sudo chown -R nobody:nogroup /tmp/nextcloud
+          cd /tmp
+          mkdir -p "$GITHUB_WORKSPACE/releases"
+          sudo tar jcf "$GITHUB_WORKSPACE/releases/nextcloud-${VERSION}.tar.bz2" nextcloud --format=gnu
+          sudo zip -rq9 "$GITHUB_WORKSPACE/releases/nextcloud-${VERSION}.zip" nextcloud
+          ls -lh "$GITHUB_WORKSPACE/releases/"
+
+      - name: Generate checksums
+        run: |
+          cd "$GITHUB_WORKSPACE/releases"
+          for file in nextcloud-*; do
+            [[ "$file" == *.sha256 || "$file" == *.sha512 || "$file" == *.md5 ]] && continue
+            sha256sum "$file" > "${file}.sha256"
+            sha512sum "$file" > "${file}.sha512"
+            md5sum "$file" > "${file}.md5"
+          done
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release
+          path: releases/
+
+  compare:
+    needs: [init, assemble]
+    if: always() && needs.assemble.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download workflow build
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release
+          path: /tmp/new-release
+
+      - name: Download release script assets
+        id: download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.init.outputs.tag }}"
+          VERSION="${{ needs.init.outputs.version }}"
+          mkdir -p /tmp/existing-release
+
+          # Download the tar.bz2 attached by the release script to this same release
+          if gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern "nextcloud-${VERSION}.tar.bz2" \
+            --dir /tmp/existing-release 2>/dev/null; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Downloaded release script assets for $TAG"
+          else
+            echo "::warning::No tar.bz2 attached to $TAG yet (release script may not have run)"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compare file lists
+        if: steps.download.outputs.found == 'true'
+        run: |
+          VERSION="${{ needs.init.outputs.version }}"
+
+          mkdir -p /tmp/existing /tmp/new
+          tar -xf "/tmp/existing-release/nextcloud-${VERSION}.tar.bz2" -C /tmp/existing
+          cd /tmp/new && sudo tar -xf "/tmp/new-release/nextcloud-${VERSION}.tar.bz2" && cd /
+
+          (cd /tmp/existing && find . -type f | sort) > /tmp/existing-files.txt
+          (cd /tmp/new && find . -type f | sort) > /tmp/new-files.txt
+
+          comm -23 /tmp/existing-files.txt /tmp/new-files.txt > /tmp/only-in-existing.txt
+          comm -13 /tmp/existing-files.txt /tmp/new-files.txt > /tmp/only-in-new.txt
+
+          EXISTING_COUNT=$(wc -l < /tmp/existing-files.txt)
+          NEW_COUNT=$(wc -l < /tmp/new-files.txt)
+          MISSING=$(wc -l < /tmp/only-in-existing.txt)
+          EXTRA=$(wc -l < /tmp/only-in-new.txt)
+
+          # Expected diffs: signing (different keys), docs, chunk hashes, config cleanup, translations
+          KNOWN_PATTERN='(signature\.json|core/doc/|Nextcloud Manual\.pdf|\.chunk\.(mjs|css)|\.config\.(js|ts|mjs|cjs)$|\.prettierignore|/l10n/[^/]*\.(js|json)$)'
+          UNEXPECTED_MISSING=$(grep -v -E "$KNOWN_PATTERN" /tmp/only-in-existing.txt | wc -l)
+          UNEXPECTED_EXTRA=$(grep -v -E "$KNOWN_PATTERN" /tmp/only-in-new.txt | wc -l)
+
+          {
+            echo "## Build Comparison: ${{ needs.init.outputs.tag }}"
+            echo ""
+            echo "Comparing workflow build against release script assets on the same release."
+            echo ""
+            echo "| | Files |"
+            echo "|---|---|"
+            echo "| Release script | ${EXISTING_COUNT} |"
+            echo "| Workflow build | ${NEW_COUNT} |"
+            echo "| Only in release script | ${MISSING} (${UNEXPECTED_MISSING} unexpected) |"
+            echo "| Only in workflow build | ${EXTRA} (${UNEXPECTED_EXTRA} unexpected) |"
+            echo ""
+
+            if [ "$UNEXPECTED_MISSING" -eq 0 ] && [ "$UNEXPECTED_EXTRA" -eq 0 ]; then
+              echo "### All differences are expected"
+            fi
+
+            if [ "$UNEXPECTED_MISSING" -gt 0 ]; then
+              echo "### Unexpected files only in release script build (${UNEXPECTED_MISSING})"
+              echo ""
+              echo "<details><summary>Show files</summary>"
+              echo ""
+              echo '```'
+              grep -v -E "$KNOWN_PATTERN" /tmp/only-in-existing.txt
+              echo '```'
+              echo "</details>"
+              echo ""
+            fi
+
+            if [ "$UNEXPECTED_EXTRA" -gt 0 ]; then
+              echo "### Unexpected files only in workflow build (${UNEXPECTED_EXTRA})"
+              echo ""
+              echo "<details><summary>Show files</summary>"
+              echo ""
+              echo '```'
+              grep -v -E "$KNOWN_PATTERN" /tmp/only-in-new.txt
+              echo '```'
+              echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "=== Only in release script build ==="
+          grep -v -E "$KNOWN_PATTERN" /tmp/only-in-existing.txt || echo "(none)"
+          echo "=== Only in workflow build ==="
+          grep -v -E "$KNOWN_PATTERN" /tmp/only-in-new.txt || echo "(none)"
+
+          if [ "$UNEXPECTED_MISSING" -gt 0 ] || [ "$UNEXPECTED_EXTRA" -gt 0 ]; then
+            echo "::warning::Differences found between release script and workflow build"
+          fi
