@@ -29,9 +29,17 @@ clone() {
 clone "nextcloud/server" "$REF" "$OUTPUT/server"
 git -C "$OUTPUT/server" rev-parse HEAD > "$OUTPUT/server/release-commit-hash"
 
-# 3rdparty (replace server's submodule)
+# 3rdparty: use the exact submodule commit from the server
 rm -rf "$OUTPUT/server/3rdparty"
-clone "nextcloud/3rdparty" "$REF" "$OUTPUT/3rdparty"
+SUBMODULE_SHA=$(git -C "$OUTPUT/server" ls-tree HEAD 3rdparty | awk '{print $3}')
+if [ -n "$SUBMODULE_SHA" ]; then
+  echo "3rdparty submodule points to $SUBMODULE_SHA"
+  git clone "https://github.com/nextcloud/3rdparty.git" "$OUTPUT/3rdparty" -q
+  git -C "$OUTPUT/3rdparty" checkout "$SUBMODULE_SHA" -q
+else
+  echo "Warning: could not read submodule, using $REF"
+  clone "nextcloud/3rdparty" "$REF" "$OUTPUT/3rdparty"
+fi
 rm -rf "$OUTPUT/3rdparty/.git" "$OUTPUT/3rdparty/.github" "$OUTPUT/3rdparty/.gitignore" "$OUTPUT/3rdparty/README.md"
 
 # Updater (only 2 files needed)

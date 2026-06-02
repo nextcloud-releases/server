@@ -59,5 +59,3 @@ done
 # Catch-all: any *.config.{js,ts,mjs,cjs} is a dev config
 find . -maxdepth 1 \( -name "*.config.js" -o -name "*.config.ts" -o -name "*.config.mjs" -o -name "*.config.cjs" \) -delete 2>/dev/null || true
 
-# Remove .map.license files (REUSE companions of sourcemaps, not needed in release)
-find . -name "*.map.license" -delete 2>/dev/null || true
