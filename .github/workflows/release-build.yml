@@ -180,39 +180,14 @@ jobs:
       - name: Save commit hash
         run: git rev-parse HEAD > release-commit-hash
 
-      - name: Clean dev files
-        run: |
-          # NC25+ uses .nextcloudignore with gitignore-style patterns.
-          # git ls-files -ic finds tracked files matching the ignore patterns.
-          # Older versions fall back to a hardcoded removal list.
-          if [ -f ".nextcloudignore" ]; then
-            git ls-files -ic --exclude-from=.nextcloudignore -z | xargs -0 -r -n 10 -- rm -fr
-            find . -empty -type d -delete
-          else
-            rm -rf .babelrc .codecov.yml .devcontainer .drone.yml .editorconfig
-            rm -rf .envrc .eslintignore .eslintrc.js .git-blame-ignore-revs
-            rm -rf .gitattributes .github .gitignore .gitmodules .idea .jshintrc
-            rm -rf .mailmap .npmignore .php-cs-fixer.dist.php .php_cs.dist
-            rm -rf .pre-commit-config.yaml .scrutinizer.yml .tag .tx
-            rm -rf CHANGELOG.md CODE_OF_CONDUCT.md COPYING-README DESIGN.md
-            rm -rf Makefile README.md SECURITY.md __mocks__ __tests__
-            rm -rf apps/dav/bin apps/testing
-            rm -rf autotest-checkers.sh autotest-external.sh autotest-js.sh autotest.sh
-            rm -rf babel.config.js build codecov.yml contribute custom.d.ts
-            rm -rf cypress cypress.config.ts cypress.d.ts
-            rm -rf eslint.config.js eslint.config.mjs flake.lock flake.nix
-            rm -rf jest.config.js jest.config.ts openapi.json
-            rm -rf psalm-ncu.xml psalm-ocp.xml psalm.xml stylelint.config.js
-            rm -rf tests tsconfig.json vendor-bin vite.config.ts
-            rm -rf vitest.config.mts vitest.config.ts
-            rm -rf webpack.common.cjs webpack.common.js webpack.config.js
-            rm -rf webpack.dev.js webpack.modules.cjs webpack.modules.js webpack.prod.js
-            rm -rf window.d.ts
-            rm -rf .direnv .well-known config/config.php data
-          fi
+      - name: Checkout scripts
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: _scripts
+          sparse-checkout: .github/scripts
 
-      - name: Remove .git
-        run: rm -rf .git
+      - name: Clean dev files
+        run: bash _scripts/.github/scripts/clean-server-dev-files.sh && rm -rf _scripts
 
       - name: Upload
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -394,40 +369,21 @@ jobs:
 
       - name: Assemble release
         run: |
-          # Server is the base
-          mv server /tmp/nextcloud
-
-          # Replace server's 3rdparty submodule with the standalone repo
-          rm -rf /tmp/nextcloud/3rdparty
-          mv 3rdparty /tmp/nextcloud/3rdparty
-
-          # Place all apps from the matrix into apps/
-          # Skip non-app artifacts (handled separately below)
+          # Rearrange artifacts into build dir structure expected by assemble.sh
+          mkdir -p /tmp/build/apps
+          mv server /tmp/build/server
+          mv 3rdparty /tmp/build/3rdparty
+          mv updater /tmp/build/updater
+          mv example-files /tmp/build/example-files
+          [ -d docs ] && mv docs /tmp/build/docs
           for app_dir in */; do
             id=$(basename "$app_dir")
-            case "$id" in _config|docs|release|updater|example-files) continue ;; esac
-            mv "$app_dir" "/tmp/nextcloud/apps/$id"
+            case "$id" in _config|release) continue ;; esac
+            mv "$app_dir" "/tmp/build/apps/$id"
           done
 
-          # Updater: only index.php + updater.phar
-          mkdir -p /tmp/nextcloud/updater
-          mv updater/index.php /tmp/nextcloud/updater/index.php
-          mv updater/updater.phar /tmp/nextcloud/updater/updater.phar
-          rm -rf updater
-
-          # Example files replace skeleton
-          rm -rf /tmp/nextcloud/core/skeleton
-          mv example-files /tmp/nextcloud/core/skeleton
-
-      - name: Integrate documentation
-        run: |
-          if [ -d docs ] && [ "$(ls -A docs)" ]; then
-            rm -f /tmp/nextcloud/core/doc/user/index.php /tmp/nextcloud/core/doc/admin/index.php
-            [ -d docs/user_manual/en ] && cp -a docs/user_manual/en/* /tmp/nextcloud/core/doc/user/
-            [ -d docs/admin_manual ] && cp -a docs/admin_manual/* /tmp/nextcloud/core/doc/admin/
-            [ -f docs/Nextcloud_User_Manual.pdf ] && cp -a "docs/Nextcloud_User_Manual.pdf" "/tmp/nextcloud/core/skeleton/Nextcloud Manual.pdf"
-          fi
-          rm -rf docs
+          bash _config/.github/scripts/assemble.sh /tmp/build /tmp/nextcloud
+          rm -rf /tmp/build
 
       - name: Clean dev files from all apps
         run: |
@@ -443,52 +399,13 @@ jobs:
           done
           shopt -u nullglob
 
-      - name: Final cleanup
-        run: |
-          rm -rf _config
-          find /tmp/nextcloud -name .git -exec rm -rf {} + 2>/dev/null || true
-          rm -f /tmp/nextcloud/config/config.php
-          rm -rf /tmp/nextcloud/data
-
       - name: Update version.php
-        env:
-          CHANNEL: ${{ needs.init.outputs.channel }}
-          BRANCH: ${{ needs.init.outputs.branch }}
         run: |
-          # Rewrite version.php with release metadata.
-          # Preserves OC_Version and OC_VersionString from the repo.
-          # Sets channel (stable/beta), build timestamp, and edition.
-          # Must match the release script's replaceversion() output exactly.
-          COMMIT_HASH=$(cat /tmp/nextcloud/release-commit-hash)
-          rm -f /tmp/nextcloud/release-commit-hash
-          export BUILD_STRING="$(date -u +%Y-%m-%dT%H:%M:%S+00:00) ${COMMIT_HASH}"
-
-          php << 'EOPHP'
-          <?php
-          $file = '/tmp/nextcloud/version.php';
-          require($file);
-          $channel = getenv('CHANNEL');
-          $branch = getenv('BRANCH');
-          $build = getenv('BUILD_STRING');
-          $content = "<?php \n";
-          $content .= '$OC_Version = array(' . implode(',', $OC_Version) . ')' . ";\n";
-          $content .= '$OC_VersionString = \'' . $OC_VersionString . "';\n";
-          if ($branch !== 'master') {
-              $content .= '$OC_Edition = \'' . "';\n";
-          }
-          $content .= '$OC_Channel = \'' . $channel . "';\n";
-          if (isset($OC_VersionCanBeUpgradedFrom)) {
-              $content .= '$OC_VersionCanBeUpgradedFrom = ' . var_export($OC_VersionCanBeUpgradedFrom, true) . ";\n";
-          }
-          $content .= '$OC_Build = \'' . $build . "';\n";
-          $content .= '$vendor = \'nextcloud\';' . "\n";
-          file_put_contents($file, $content);
-          EOPHP
+          export NC=/tmp/nextcloud
+          bash _config/.github/scripts/update-version-php.sh \
+            /tmp/nextcloud "${{ needs.init.outputs.channel }}" "${{ needs.init.outputs.branch }}"
 
       - name: Sign release
-        # Signs core and each app with occ integrity:sign-core/sign-app.
-        # Uses SIGN_CERTIFICATE secret if provided (for testing with dummy keys),
-        # otherwise falls back to the repo's resources/codesigning/core.crt.
         env:
           SIGN_KEY: ${{ secrets.SIGN_PRIVATE_KEY }}
           SIGN_CERT: ${{ secrets.SIGN_CERTIFICATE }}
@@ -497,96 +414,27 @@ jobs:
             echo "::warning::SIGN_PRIVATE_KEY not set, skipping code signing"
             exit 0
           fi
-          NC=/tmp/nextcloud
           echo "$SIGN_KEY" > /tmp/signing-key.pem
+          CERT_ARG=""
           if [ -n "$SIGN_CERT" ]; then
             echo "$SIGN_CERT" > /tmp/signing-cert.pem
-            CERT=/tmp/signing-cert.pem
-          else
-            CERT="$NC/resources/codesigning/core.crt"
+            CERT_ARG="/tmp/signing-cert.pem"
           fi
-          chmod 755 "$NC/occ"
-          chmod 777 "$NC/config"
-          php "$NC/occ" integrity:sign-core --privateKey=/tmp/signing-key.pem --certificate="$CERT" --path "$NC"
-          for app_dir in "$NC"/apps/*/; do
-            php "$NC/occ" integrity:sign-app --privateKey=/tmp/signing-key.pem --certificate="$CERT" --path="$app_dir"
-          done
-          rm -f /tmp/signing-key.pem /tmp/signing-cert.pem "$NC/config/config.php"
+          bash _config/.github/scripts/sign-release.sh /tmp/nextcloud /tmp/signing-key.pem $CERT_ARG
+          rm -f /tmp/signing-key.pem /tmp/signing-cert.pem
 
       - name: Generate metadata file
-        # NC30+ ships a .metadata JSON with migration info for the updater.
-        # Requires a temporary Nextcloud installation to run occ.
         if: needs.init.outputs.major >= 30
         run: |
-          VERSION="${{ needs.init.outputs.version }}"
-          NC=/tmp/nextcloud
-          START_TS=$(date +%s)
-
-          # Install to a temp copy (not the release tree) to avoid polluting it
-          INSTALL_DIR=$(mktemp -d)
-          cp -a "$NC" "$INSTALL_DIR/nextcloud"
-          chmod 755 "$INSTALL_DIR/nextcloud/occ"
-          chmod 777 "$INSTALL_DIR/nextcloud/config"
-
-          php "$INSTALL_DIR/nextcloud/occ" maintenance:install \
-            --admin-user admin --admin-pass admin 2>&1 || true
-
-          php "$INSTALL_DIR/nextcloud/occ" migrations:generate-metadata > /tmp/metadata-raw.json 2>/dev/null || true
-
-          if [ ! -s /tmp/metadata-raw.json ]; then
-            echo "::warning::Could not generate metadata"
-            rm -rf "$INSTALL_DIR"
-            exit 0
-          fi
-
-          NOW_TS=$(date +%s)
-          DURATION=$((NOW_TS - START_TS))
           mkdir -p "$GITHUB_WORKSPACE/releases"
+          bash _config/.github/scripts/generate-metadata.sh \
+            /tmp/nextcloud "${{ needs.init.outputs.version }}" "$GITHUB_WORKSPACE/releases"
 
-          export METADATA_FILE="/tmp/metadata-raw.json"
-          export OUTPUT_FILE="$GITHUB_WORKSPACE/releases/nextcloud-${VERSION}.metadata"
-          export BUILD_START="$START_TS"
-          export BUILD_DURATION="$DURATION"
-
-          php << 'EOPHP'
-          <?php
-          $raw = file_get_contents(getenv('METADATA_FILE'));
-          $meta = json_decode($raw, true) ?: [];
-          $meta['build'] = [
-              'initiated' => (int)getenv('BUILD_START'),
-              'duration' => (int)getenv('BUILD_DURATION'),
-          ];
-          file_put_contents(
-              getenv('OUTPUT_FILE'),
-              json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-          );
-          echo "Metadata file created\n";
-          EOPHP
-
-          rm -rf "$INSTALL_DIR" /tmp/metadata-raw.json
-
-      - name: Set permissions and create archives
+      - name: Package and checksum
         run: |
-          VERSION="${{ needs.init.outputs.version }}"
-          # Match release script: dirs 755, files 644, owner nobody:nogroup
-          find /tmp/nextcloud -type d -exec chmod 755 {} \;
-          find /tmp/nextcloud -type f -exec chmod 644 {} \;
-          sudo chown -R nobody:nogroup /tmp/nextcloud
-          cd /tmp
-          mkdir -p "$GITHUB_WORKSPACE/releases"
-          sudo tar jcf "$GITHUB_WORKSPACE/releases/nextcloud-${VERSION}.tar.bz2" nextcloud --format=gnu
-          sudo zip -rq9 "$GITHUB_WORKSPACE/releases/nextcloud-${VERSION}.zip" nextcloud
-          ls -lh "$GITHUB_WORKSPACE/releases/"
-
-      - name: Generate checksums
-        run: |
-          cd "$GITHUB_WORKSPACE/releases"
-          for file in nextcloud-*; do
-            [[ "$file" == *.sha256 || "$file" == *.sha512 || "$file" == *.md5 ]] && continue
-            sha256sum "$file" > "${file}.sha256"
-            sha512sum "$file" > "${file}.sha512"
-            md5sum "$file" > "${file}.md5"
-          done
+          bash _config/.github/scripts/package.sh \
+            /tmp/nextcloud "${{ needs.init.outputs.version }}" "$GITHUB_WORKSPACE/releases"
+          rm -rf _config
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
