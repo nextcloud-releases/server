@@ -69,7 +69,7 @@ jobs:
 
           # Find config file
           if [ "$BRANCH" = "master" ]; then
-            CONFIG=$(ls stable*.json 2>/dev/null | sort -V | tail -1)
+            CONFIG="master.json"
           else
             CONFIG="stable${MAJOR}.json"
           fi
@@ -111,7 +111,7 @@ jobs:
             echo "|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
 
-          echo "$REPOS" | while read -r repo; do
+          while read -r repo; do
             [ -z "$repo" ] && continue
             TOTAL=$((TOTAL + 1))
 
@@ -166,7 +166,7 @@ jobs:
               echo "| \`$repo\` | $REPO_BRANCH | **failed** | - |" >> "$GITHUB_STEP_SUMMARY"
               FAILED=$((FAILED + 1))
             fi
-          done
+          done <<< "$REPOS"
 
           {
             echo ""

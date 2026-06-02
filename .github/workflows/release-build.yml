@@ -198,7 +198,7 @@ jobs:
           retention-days: 1
 
   fetch-3rdparty:
-    needs: [init, fetch-server]
+    needs: init
     runs-on: ubuntu-latest
     steps:
       - name: Get submodule ref from server
@@ -364,7 +364,13 @@ jobs:
 
   assemble:
     needs: [init, fetch-server, fetch-3rdparty, fetch-apps, fetch-updater, fetch-example-files, fetch-docs]
-    if: always() && needs.fetch-server.result == 'success' && needs.fetch-apps.result == 'success'
+    if: >-
+      always()
+      && needs.fetch-server.result == 'success'
+      && needs.fetch-3rdparty.result == 'success'
+      && needs.fetch-apps.result == 'success'
+      && needs.fetch-updater.result == 'success'
+      && needs.fetch-example-files.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -469,23 +475,34 @@ jobs:
           name: release
           path: /tmp/new-release
 
-      - name: Download release script assets
-        # Downloads the tar.bz2 attached by the release script to this same release.
-        # Both builds ran from the same branch HEAD, so diffs indicate real issues.
+      - name: Download existing release archive
+        # Try GitHub release assets first (attached by the release script),
+        # then fall back to the public download server.
         id: download
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ needs.init.outputs.tag }}"
           VERSION="${{ needs.init.outputs.version }}"
+          ARCHIVE="nextcloud-${VERSION}.tar.bz2"
           mkdir -p /tmp/existing-release
+
+          # 1. Try the GitHub release on this repo
           if gh release download "$TAG" \
             --repo "${{ github.repository }}" \
-            --pattern "nextcloud-${VERSION}.tar.bz2" \
+            --pattern "$ARCHIVE" \
             --dir /tmp/existing-release 2>/dev/null; then
+            echo "source=github-release" >> "$GITHUB_OUTPUT"
             echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Downloaded $ARCHIVE from GitHub release $TAG"
+          # 2. Fall back to the public download server
+          elif curl -fsSL -o "/tmp/existing-release/$ARCHIVE" \
+            "https://download.nextcloud.com/server/releases/$ARCHIVE" 2>/dev/null; then
+            echo "source=download-server" >> "$GITHUB_OUTPUT"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Downloaded $ARCHIVE from download.nextcloud.com"
           else
-            echo "::warning::No tar.bz2 attached to $TAG yet"
+            echo "::warning::No existing archive found (GitHub release or download server)"
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -520,11 +537,14 @@ jobs:
           UNEXPECTED_EXTRA=$(grep -v -E "$KNOWN_PATTERN" /tmp/only-in-new.txt | wc -l)
 
           {
+            SOURCE="${{ steps.download.outputs.source }}"
             echo "## Build Comparison: ${{ needs.init.outputs.tag }}"
+            echo ""
+            echo "Reference archive from: **${SOURCE}**"
             echo ""
             echo "| | Files |"
             echo "|---|---|"
-            echo "| Release script | ${EXISTING_COUNT} |"
+            echo "| Existing release | ${EXISTING_COUNT} |"
             echo "| Workflow build | ${NEW_COUNT} |"
             echo "| Only in release script | ${MISSING} (${UNEXPECTED_MISSING} unexpected) |"
             echo "| Only in workflow | ${EXTRA} (${UNEXPECTED_EXTRA} unexpected) |"
