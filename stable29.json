@@ -1,0 +1,87 @@
+[
+  {
+    "id": "activity",
+    "repo": "nextcloud/activity"
+  },
+  {
+    "id": "bruteforcesettings",
+    "repo": "nextcloud/bruteforcesettings"
+  },
+  {
+    "id": "circles",
+    "repo": "nextcloud/circles"
+  },
+  {
+    "id": "files_downloadlimit",
+    "repo": "nextcloud/files_downloadlimit"
+  },
+  {
+    "id": "files_pdfviewer",
+    "repo": "nextcloud/files_pdfviewer"
+  },
+  {
+    "id": "firstrunwizard",
+    "repo": "nextcloud/firstrunwizard"
+  },
+  {
+    "id": "logreader",
+    "repo": "nextcloud/logreader"
+  },
+  {
+    "id": "nextcloud_announcements",
+    "repo": "nextcloud/nextcloud_announcements"
+  },
+  {
+    "id": "notifications",
+    "repo": "nextcloud/notifications"
+  },
+  {
+    "id": "password_policy",
+    "repo": "nextcloud/password_policy"
+  },
+  {
+    "id": "photos",
+    "repo": "nextcloud/photos"
+  },
+  {
+    "id": "privacy",
+    "repo": "nextcloud/privacy"
+  },
+  {
+    "id": "recommendations",
+    "repo": "nextcloud/recommendations"
+  },
+  {
+    "id": "related_resources",
+    "repo": "nextcloud/related_resources"
+  },
+  {
+    "id": "serverinfo",
+    "repo": "nextcloud/serverinfo"
+  },
+  {
+    "id": "support",
+    "repo": "nextcloud-gmbh/support"
+  },
+  {
+    "id": "survey_client",
+    "repo": "nextcloud/survey_client"
+  },
+  {
+    "id": "suspicious_login",
+    "repo": "nextcloud/suspicious_login",
+    "composer_args": "--no-dev -a --quiet --no-scripts"
+  },
+  {
+    "id": "text",
+    "repo": "nextcloud/text"
+  },
+  {
+    "id": "twofactor_totp",
+    "repo": "nextcloud/twofactor_totp"
+  },
+  {
+    "id": "viewer",
+    "repo": "nextcloud/viewer"
+  }
+]
