@@ -593,14 +593,15 @@ jobs:
 
             if [ "$CONTENT_DIFFS" -gt 0 ]; then
               # Filter out version.php (expected: different build timestamp)
-              UNEXPECTED_CONTENT=$(grep "^[<>]" /tmp/hash-diff.txt | sed 's/^[<>] [a-f0-9]* \+//' | sort -u | grep -v "version\.php" | wc -l)
+              KNOWN_CONTENT='(version\.php)'
+              UNEXPECTED_CONTENT=$(grep "^[<>]" /tmp/hash-diff.txt | sed 's/^[<>] [a-f0-9]* \+//' | sort -u | grep -v -E "$KNOWN_CONTENT" | wc -l)
               echo "| Unexpected content diffs | ${UNEXPECTED_CONTENT} |"
               echo ""
               if [ "$UNEXPECTED_CONTENT" -gt 0 ]; then
                 echo "<details><summary>Files with different content (${UNEXPECTED_CONTENT})</summary>"
                 echo ""
                 echo '```'
-                grep "^[<>]" /tmp/hash-diff.txt | sed 's/^[<>] [a-f0-9]* \+//' | sort -u | grep -v "version\.php"
+                grep "^[<>]" /tmp/hash-diff.txt | sed 's/^[<>] [a-f0-9]* \+//' | sort -u | grep -v -E "$KNOWN_CONTENT"
                 echo '```'
                 echo "</details>"
               else
@@ -614,7 +615,7 @@ jobs:
 
           echo "=== Content diffs (excluding version.php) ==="
           if [ "$CONTENT_DIFFS" -gt 0 ]; then
-            grep "^[<>]" /tmp/hash-diff.txt | sed 's/^[<>] [a-f0-9]* \+//' | sort -u | grep -v "version\.php" || echo "(none)"
+            grep "^[<>]" /tmp/hash-diff.txt | sed 's/^[<>] [a-f0-9]* \+//' | sort -u | grep -v -E "$KNOWN_CONTENT" || echo "(none)"
           else
             echo "(none)"
           fi

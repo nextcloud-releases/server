@@ -28,25 +28,22 @@ if [ -f ".nextcloudignore" ]; then
   done < .nextcloudignore
 fi
 
-# Remove dev file patterns (based on getDataToBeRemovedFromAppFolders)
+# Remove dev file patterns (synced with release script's getDataToBeRemovedFromAppFolders)
 DEV_PATTERNS=(
-  .babelrc .babelrc.js .codecov.yml .devcontainer .drone.yml .editorconfig
-  .eslintrc.cjs .eslintrc.js .eslintrc.json .eslintignore
+  .babelrc .codecov.yml .devcontainer .drone.yml .editorconfig .eslintignore
   .git/ .gitattributes .github .gitignore .git-blame-ignore-revs
   .jshintrc .l10nignore .lgtm .nextcloudignore .npmignore .noopenapi
-  .php_cs.dist .php-cs-fixer.dist.php .scrutinizer.yml .stylelintignore
-  .stylelintrc.js .travis.yml .tx/
-  babel.config.js build-js/ build.xml
+  .php_cs.dist .php-cs-fixer.dist.php .prettierignore .scrutinizer.yml
+  .stylelintignore .travis.yml .tx/
+  build-js/ build.xml
   check-handlebars-templates.sh codecov.yml compile-handlebars-templates.sh
   CONTRIBUTING.md
-  cypress.config.js cypress.config.ts cypress.json cypress/
-  issue_template.md jest-raw-loader.js jest.config.js jsconfig.json
-  krankerl.toml l10n/.gitkeep Makefile postcss.config.js psalm.xml
-  .prettierignore
-  README.md rector.php renovate.json screenshots/ src/
-  stylelint.config.js stylelint.config.cjs tests/ tsconfig.json
-  vite.config.js vite.config.ts vitest.config.js vitest.config.ts
-  webpack.common.js webpack.config.js webpack.dev.js webpack.js webpack.prod.js
+  cypress.json cypress/
+  issue_template.md jest-raw-loader.js jsconfig.json
+  krankerl.toml l10n/.gitkeep Makefile phpDocumentor.sh psalm.xml
+  README.md rector.php renovate.json screenshots/ src/ testConfiguration.json
+  tests/
+  webpack.common.js webpack.dev.js webpack.js webpack.prod.js
 )
 
 for pattern in "${DEV_PATTERNS[@]}"; do
@@ -56,6 +53,21 @@ for pattern in "${DEV_PATTERNS[@]}"; do
   fi
 done
 
-# Catch-all: any *.config.{js,ts,mjs,cjs} is a dev config
-find . -maxdepth 1 \( -name "*.config.js" -o -name "*.config.ts" -o -name "*.config.mjs" -o -name "*.config.cjs" \) -delete 2>/dev/null || true
+# JavaScript config files: cross-product of base names × extensions
+# (matches release script's $javascriptConfigs × $suffix loop)
+JS_CONFIG_BASES=(
+  .babelrc .eslintrc .prettierrc .stylelintrc
+  babel.config cypress.config eslint.config jest.config jsconfig
+  oxlintrc oxlint.config playwright.config postcss.config prettier.config
+  rspack.config stylelint.config tsconfig vite.config vitest.config
+  webpack webpack.config
+)
+JS_EXTENSIONS=(.json .js .mjs .cjs .ts .mts .cts)
+
+for base in "${JS_CONFIG_BASES[@]}"; do
+  for ext in "${JS_EXTENSIONS[@]}"; do
+    rm -rf "${base}${ext}"
+    rm -rf "${base}${ext}.license"
+  done
+done
 
