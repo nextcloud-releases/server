@@ -44,7 +44,6 @@ fi
 
 # Final cleanup
 find "$OUTPUT" -name .git -exec rm -rf {} + 2>/dev/null || true
-find "$OUTPUT" -name "*.map.license" -delete 2>/dev/null || true
 rm -f "$OUTPUT/config/config.php"
 rm -rf "$OUTPUT/data"
 

@@ -10,12 +10,29 @@ set -e
 DIR="${1:-.}"
 cd "$DIR"
 
+# Files to preserve even if .nextcloudignore lists them
+KEEP_FILES=(composer.json composer.lock package.json package-lock.json)
+
 # Process .nextcloudignore if present
 if [ -f ".nextcloudignore" ]; then
   APP_DIR=$(pwd)
   while IFS= read -r line || [[ -n "$line" ]]; do
     pattern=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/\r$//')
     [[ -z "$pattern" || "$pattern" == \#* ]] && continue
+
+    # Check if this pattern targets a preserved file
+    # e.g. /composer.* would match composer.json — skip the whole pattern
+    clean="${pattern#/}"
+    skip=false
+    for keep in "${KEEP_FILES[@]}"; do
+      # shellcheck disable=SC2254
+      if [[ "$keep" == $clean ]]; then
+        skip=true
+        break
+      fi
+    done
+    $skip && continue
+
     if [[ "$pattern" == /* ]]; then
       pattern="${pattern#/}"
       # shellcheck disable=SC2086
@@ -42,7 +59,7 @@ DEV_PATTERNS=(
   issue_template.md jest-raw-loader.js jsconfig.json
   krankerl.toml l10n/.gitkeep Makefile phpDocumentor.sh psalm.xml
   README.md rector.php renovate.json screenshots/ src/ testConfiguration.json
-  tests/
+  tests/ vendor-bin/
   webpack.common.js webpack.dev.js webpack.js webpack.prod.js
 )
 
