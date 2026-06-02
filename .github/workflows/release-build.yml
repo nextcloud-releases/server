@@ -201,26 +201,11 @@ jobs:
     needs: init
     runs-on: ubuntu-latest
     steps:
-      - name: Get submodule ref from server
-        id: submodule
-        run: |
-          # Read the exact 3rdparty commit the server submodule points to
-          REF="${{ needs.init.outputs.ref }}"
-          SHA=$(curl -sf "https://api.github.com/repos/nextcloud/server/contents/3rdparty?ref=${REF}" \
-            | jq -r '.sha')
-          if [ -n "$SHA" ] && [ "$SHA" != "null" ]; then
-            echo "ref=$SHA" >> "$GITHUB_OUTPUT"
-            echo "::notice::3rdparty submodule points to $SHA"
-          else
-            echo "ref=$REF" >> "$GITHUB_OUTPUT"
-            echo "::warning::Could not read submodule SHA, falling back to $REF"
-          fi
-
       - name: Checkout 3rdparty
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: nextcloud/3rdparty
-          ref: ${{ steps.submodule.outputs.ref }}
+          ref: ${{ needs.init.outputs.ref }}
 
       - name: Clean
         run: rm -rf .git .github .gitignore README.md
