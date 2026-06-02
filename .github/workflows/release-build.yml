@@ -124,17 +124,20 @@ jobs:
         id: php
         run: |
           BRANCH="${{ steps.parse.outputs.branch }}"
-          # Parse the upper bound from versioncheck.php (e.g. "PHP_VERSION_ID >= 80600")
-          # 80600 means PHP 8.6+ is rejected, so max supported is 8.5
-          MAX_PHP_ID=$(curl -sf "https://raw.githubusercontent.com/nextcloud/server/refs/heads/${BRANCH}/lib/versioncheck.php" \
-            | grep -oP 'PHP_VERSION_ID >= \K\d+' | head -1)
+          # Use the minimum supported PHP version from versioncheck.php.
+          # This matches the release script, which tries php8.4→down and picks
+          # the first that passes occ status (i.e. the lowest available that
+          # satisfies the minimum). Using the minimum ensures composer generates
+          # identical autoloader output (platform_check.php, etc.).
+          MIN_PHP_ID=$(curl -sf "https://raw.githubusercontent.com/nextcloud/server/refs/heads/${BRANCH}/lib/versioncheck.php" \
+            | grep -oP 'PHP_VERSION_ID < \K\d+' | head -1)
 
-          if [ -n "$MAX_PHP_ID" ]; then
-            # 80600 / 100 = 806, % 100 = 6, - 1 = 5 → PHP 8.5
-            MAX_MINOR=$(( (MAX_PHP_ID / 100) % 100 - 1 ))
-            PHP_VERSION="8.${MAX_MINOR}"
+          if [ -n "$MIN_PHP_ID" ]; then
+            # 80200 → major=8, minor=2 → PHP 8.2
+            MIN_MINOR=$(( (MIN_PHP_ID / 100) % 100 ))
+            PHP_VERSION="8.${MIN_MINOR}"
           else
-            PHP_VERSION="8.3"
+            PHP_VERSION="8.1"
           fi
 
           echo "version=$PHP_VERSION" >> "$GITHUB_OUTPUT"
