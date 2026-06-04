@@ -2,10 +2,14 @@
 # SPDX-License-Identifier: MIT
 
 name: Generate changelog on release
+run-name: "Changelog ${{ inputs.tag }}"
 
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       tag:
