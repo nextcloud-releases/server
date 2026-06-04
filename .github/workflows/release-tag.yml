@@ -118,10 +118,10 @@ jobs:
             # Try stable branch first. If it doesn't exist (e.g. some repos
             # use "main" instead of "master"), fall back to the repo's default branch.
             REPO_BRANCH="$BRANCH"
-            SHA=$(gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" --jq '.object.sha' 2>/dev/null)
+            SHA=$(gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" --jq '.object.sha' 2>/dev/null || true)
             if [ -z "$SHA" ]; then
-              REPO_BRANCH=$(gh api "repos/$repo" --jq '.default_branch' 2>/dev/null)
-              SHA=$(gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" --jq '.object.sha' 2>/dev/null)
+              REPO_BRANCH=$(gh api "repos/$repo" --jq '.default_branch' 2>/dev/null || true)
+              SHA=$(gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" --jq '.object.sha' 2>/dev/null || true)
             fi
             echo -n "$repo@$REPO_BRANCH → $TAG ... "
 
@@ -133,7 +133,7 @@ jobs:
             fi
 
             # Check if tag already exists
-            EXISTING=$(gh api "repos/$repo/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null)
+            EXISTING=$(gh api "repos/$repo/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null || true)
             if [ -n "$EXISTING" ]; then
               if [ "${{ inputs.force }}" = "true" ]; then
                 echo -n "FORCE replacing ${EXISTING:0:8} ... "
