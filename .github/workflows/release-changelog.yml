@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Nextcloud GmbH and Nextcloud contributors
 # SPDX-License-Identifier: MIT
 
-name: Generate changelog on release
+name: Generate release changelog
 run-name: "Changelog ${{ inputs.tag }}"
 
 on:
