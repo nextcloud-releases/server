@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+name: Release pipeline
+run-name: "Release ${{ github.ref_name }}"
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  tag:
+    if: startsWith(github.ref_name, 'v')
+    uses: ./.github/workflows/release-tag.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
+
+  build:
+    if: startsWith(github.ref_name, 'v')
+    uses: ./.github/workflows/release-build.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

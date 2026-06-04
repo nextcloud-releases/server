@@ -1,0 +1,7 @@
+[
+	"nextcloud/server",
+	"nextcloud/3rdparty",
+	"nextcloud/updater",
+	"nextcloud/example-files",
+	"nextcloud/documentation"
+]

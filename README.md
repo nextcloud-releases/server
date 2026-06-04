@@ -1,13 +1,42 @@
-Do not push any code to that repository.
+# Nextcloud Server Releases
 
-# How to publish
-1. On https://github.com/nextcloud, tag appropriate commit on the source repository
-2. Push the new tag to this repository
-3. Create release on this repository
+Release artifacts and automation for Nextcloud server. Branches are synced daily from `nextcloud/server`.
 
-# Automatic package and publish
-1. Make sure you have the [necessary workflow](https://github.com/nextcloud/.github/blob/master/workflow-templates/appstore-build-publish.yml) on your https://github.com/nextcloud source repository
-2. Make sure your tagged commit also have the workflow
-3. Make sure this repository have the proper `APP_PRIVATE_KEY` secret set
-4. Make the `nextcloud_release_service` user is a co-maintainer of your app on https://apps.nextcloud.com/
-5. Make sure you have admin rights to this repository
+## How releases work
+
+When a release is published on this repository, three things happen in parallel:
+
+1. **Changelog** is generated and attached to the release
+2. **All app repositories** get tagged at their stable branch HEAD
+3. **Release archives** are built independently and compared against the release script output
+
+The tagger and builder can also be run manually for re-tagging or testing.
+
+## Release configuration
+
+One JSON file per major version lists all bundled apps:
+
+- `stable32.json`, `stable33.json` — 23 apps
+- `stable34.json`, `master.json` — 25 apps (+files_lock, +office)
+
+When a new app is added to the release or an existing one is removed, edit the corresponding JSON file.
+
+`tag-only.json` lists repositories that should be tagged on release but are not part of the build (server, 3rdparty, updater, example-files, documentation).
+
+## Running manually
+
+**Re-tag a release**: Actions > "Tag all repositories" > enter tag (e.g., `v34.0.1`). Check "force" to overwrite existing tags.
+
+**Rebuild a release**: Actions > "Build and compare release" > enter tag. Compares the result against the release script's archives on the same GitHub release.
+
+## Where we are
+
+The old release script still creates releases and uploads to the download server. This workflow runs alongside it to validate that both produce the same result.
+
+Once we are confident the output matches, the release script will be retired and this workflow will take over publishing.
+
+## What comes next
+
+- Enable publishing directly from the workflow (retire the release script)
+- Auto-create PRs to the updater server with release configuration
+- Add GPG signatures for archives
