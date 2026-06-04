@@ -90,16 +90,18 @@ jobs:
           TAG="${{ env.RELEASE_TAG }}"
           BRANCH="${{ steps.config.outputs.branch }}"
           CONFIG="${{ steps.config.outputs.config }}"
+          FORCE_FLAG=""
+          if [ "${{ inputs.force }}" = "true" ]; then
+            FORCE_FLAG="--force"
+          fi
 
           # Merge app repos from build config + non-build repos from tag-only.json
-          # (server, 3rdparty, updater, example-files, documentation)
           REPOS=$(jq -r '.[].repo' "$CONFIG")
           if [ -f "tag-only.json" ]; then
             REPOS=$(echo "$REPOS"; jq -r '.[]' "tag-only.json")
           fi
           REPOS=$(echo "$REPOS" | sort -u)
 
-          TOTAL=0
           SUCCESS=0
           SKIPPED=0
           FAILED=0
@@ -107,65 +109,44 @@ jobs:
           {
             echo "## Tag results: $TAG"
             echo ""
-            echo "| Repository | Branch | Status | Commit |"
-            echo "|---|---|---|---|"
+            echo "| Repository | Branch | Status |"
+            echo "|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
 
           while read -r repo; do
             [ -z "$repo" ] && continue
-            TOTAL=$((TOTAL + 1))
 
-            # Try stable branch first. If it doesn't exist (e.g. some repos
-            # use "main" instead of "master"), fall back to the repo's default branch.
+            # Resolve branch: try stable branch, fall back to repo default
             REPO_BRANCH="$BRANCH"
-            SHA=$(gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" --jq '.object.sha' 2>/dev/null || true)
-            if [ -z "$SHA" ]; then
-              REPO_BRANCH=$(gh api "repos/$repo" --jq '.default_branch' 2>/dev/null || true)
-              SHA=$(gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" --jq '.object.sha' 2>/dev/null || true)
+            if ! gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" &>/dev/null; then
+              REPO_BRANCH=$(gh api "repos/$repo" --jq '.default_branch' 2>/dev/null) || REPO_BRANCH=""
             fi
-            echo -n "$repo@$REPO_BRANCH → $TAG ... "
 
-            if [ -z "$SHA" ]; then
-              echo "SKIP (no branch found)"
-              echo "| \`$repo\` | - | no branch found | - |" >> "$GITHUB_STEP_SUMMARY"
+            if [ -z "$REPO_BRANCH" ]; then
+              echo "$repo: no branch found"
+              echo "| \`$repo\` | - | no branch found |" >> "$GITHUB_STEP_SUMMARY"
               FAILED=$((FAILED + 1))
               continue
             fi
 
-            # Check if tag already exists
-            EXISTING=$(gh api "repos/$repo/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null || true)
-            if [ -n "$EXISTING" ]; then
-              if [ "${{ inputs.force }}" = "true" ]; then
-                echo -n "FORCE replacing ${EXISTING:0:8} ... "
-                gh release delete "$TAG" --repo "$repo" --yes 2>/dev/null || true
-                gh api -X DELETE "repos/$repo/git/refs/tags/$TAG" 2>/dev/null || true
-              else
-                echo "EXISTS (${EXISTING:0:8})"
-                echo "| \`$repo\` | $REPO_BRANCH | already tagged | \`${EXISTING:0:8}\` |" >> "$GITHUB_STEP_SUMMARY"
-                SKIPPED=$((SKIPPED + 1))
-                continue
-              fi
-            fi
+            echo -n "$repo@$REPO_BRANCH → $TAG ... "
+            RESULT=$(bash .github/scripts/tag-repo.sh "$repo" "$REPO_BRANCH" "$TAG" $FORCE_FLAG)
+            echo "$RESULT"
 
-            # Create tag via temporary release. gh release create makes a tag
-            # on the target branch. We then delete the release but the tag stays.
-            # This avoids needing git clone + SSH keys for each repo.
-            if gh release create "$TAG" \
-              --repo "$repo" \
-              --target "$REPO_BRANCH" \
-              --title "$TAG" \
-              --notes "" \
-              > /dev/null 2>&1; then
-              # Delete the release, keep the tag
-              gh release delete "$TAG" --repo "$repo" --yes 2>/dev/null || true
-              echo "OK (${SHA:0:8})"
-              echo "| \`$repo\` | $REPO_BRANCH | tagged | \`${SHA:0:8}\` |" >> "$GITHUB_STEP_SUMMARY"
-              SUCCESS=$((SUCCESS + 1))
-            else
-              echo "FAILED"
-              echo "| \`$repo\` | $REPO_BRANCH | **failed** | - |" >> "$GITHUB_STEP_SUMMARY"
-              FAILED=$((FAILED + 1))
-            fi
+            case "$RESULT" in
+              OK*)
+                echo "| \`$repo\` | $REPO_BRANCH | tagged |" >> "$GITHUB_STEP_SUMMARY"
+                SUCCESS=$((SUCCESS + 1))
+                ;;
+              SKIPPED*)
+                echo "| \`$repo\` | $REPO_BRANCH | already tagged |" >> "$GITHUB_STEP_SUMMARY"
+                SKIPPED=$((SKIPPED + 1))
+                ;;
+              *)
+                echo "| \`$repo\` | $REPO_BRANCH | **failed** |" >> "$GITHUB_STEP_SUMMARY"
+                FAILED=$((FAILED + 1))
+                ;;
+            esac
           done <<< "$REPOS"
 
           {
