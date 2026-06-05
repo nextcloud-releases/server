@@ -164,14 +164,6 @@ move_issues() {
 	echo "$moved"
 }
 
-# Compute a due date 4 weeks from now in ISO 8601.
-# Tries GNU date (-d flag) first, falls back to BSD/macOS date (-v flag).
-due_date_4_weeks() {
-	date -u -d "+4 weeks" "+%Y-%m-%dT00:00:00Z" 2>/dev/null \
-		|| date -u -v+4w "+%Y-%m-%dT00:00:00Z" 2>/dev/null \
-		|| echo ""
-}
-
 # --- Main logic ---
 
 if $IS_FIRST_BETA; then
@@ -196,7 +188,6 @@ if $IS_FIRST_BETA; then
 elif ! $IS_PRERELEASE; then
 	# Stable release: close current, create next, move issues
 	NEXT_PATCH=$((PATCH + 1))
-	DUE_ON=$(due_date_4_weeks)
 
 	# Naming convention: initial major releases (v34.0.0) may use short form "Nextcloud 34",
 	# while patch releases always use full form "Nextcloud 34.0.1". Try both for .0.0.
@@ -216,7 +207,7 @@ elif ! $IS_PRERELEASE; then
 	echo "Stable release detected (${TAG})."
 	echo "  Close: ${CURRENT_MILESTONES[*]}"
 	echo "  Move issues to: ${NEXT_MILESTONE}"
-	echo "  Create: ${UPCOMING_MILESTONE} (due: ${DUE_ON})"
+	echo "  Create: ${UPCOMING_MILESTONE}"
 	echo "  Repos: ${REPO_COUNT}"
 	echo ""
 
@@ -263,7 +254,7 @@ elif ! $IS_PRERELEASE; then
 			# two open patch milestones: the next release and the one after
 			upcoming_number=$(find_milestone "$repo" "$UPCOMING_MILESTONE")
 			if [[ -z "$upcoming_number" ]]; then
-				create_milestone "$repo" "$UPCOMING_MILESTONE" "$DUE_ON"
+				create_milestone "$repo" "$UPCOMING_MILESTONE"
 				if [[ "$repo_created" == "-" ]]; then
 					repo_created="$UPCOMING_MILESTONE"
 				else
