@@ -17,8 +17,8 @@
 # version that corresponds to the given config file.
 #
 # Exit codes:
-#   0 — no issues found
-#   1 — issues found (details in output and step summary)
+#   0 - no issues found
+#   1 - issues found (details in output and step summary)
 
 set -euo pipefail
 
@@ -123,8 +123,8 @@ while IFS= read -r repo; do
 			if [[ "$title" == "$RELEASED_MILESTONE" ]] || [[ -n "$RELEASED_MILESTONE_ALT" && "$title" == "$RELEASED_MILESTONE_ALT" ]]; then
 				released_found=true
 				if [[ "$state" == "open" ]]; then
-					repo_issues+=("'${title}' still open (${open_issues} open issues) — should be closed")
-					warn_issue "$repo" "'${title}' still open (${open_issues} open issues) — should be closed"
+					repo_issues+=("'${title}' still open (${open_issues} open issues) - should be closed")
+					warn_issue "$repo" "'${title}' still open (${open_issues} open issues) - should be closed"
 				fi
 			fi
 		done <<< "$all_milestones"
@@ -135,8 +135,8 @@ while IFS= read -r repo; do
 			if [[ "$title" == "$NEXT_MILESTONE" ]]; then
 				next_found=true
 				if [[ "$state" != "open" ]]; then
-					repo_issues+=("'${title}' is ${state} — should be open")
-					warn_issue "$repo" "'${title}' is ${state} — should be open"
+					repo_issues+=("'${title}' is ${state} - should be open")
+					warn_issue "$repo" "'${title}' is ${state} - should be open"
 				fi
 			fi
 		done <<< "$all_milestones"
@@ -151,8 +151,8 @@ while IFS= read -r repo; do
 			if [[ "$title" == "$UPCOMING_MILESTONE" ]]; then
 				upcoming_found=true
 				if [[ "$state" != "open" ]]; then
-					repo_issues+=("'${title}' is ${state} — should be open")
-					warn_issue "$repo" "'${title}' is ${state} — should be open"
+					repo_issues+=("'${title}' is ${state} - should be open")
+					warn_issue "$repo" "'${title}' is ${state} - should be open"
 				fi
 				if [[ "$due_on" == "none" ]]; then
 					repo_issues+=("'${title}' has no due date")
@@ -165,7 +165,7 @@ while IFS= read -r repo; do
 			warn_issue "$repo" "Missing milestone '${UPCOMING_MILESTONE}'"
 		fi
 
-		# Check: orphans — any open milestones for patches older than the released one
+		# Check: orphans - any open milestones for patches older than the released one
 		while IFS=$'\t' read -r title state open_issues due_on; do
 			if [[ "$state" != "open" ]]; then
 				continue
@@ -174,26 +174,26 @@ while IFS= read -r repo; do
 			if [[ "$title" =~ ^Nextcloud\ ${MAJOR}\.${LATEST_MINOR}\.([0-9]+)$ ]]; then
 				ms_patch="${BASH_REMATCH[1]}"
 				if [[ "$ms_patch" -le "$LATEST_PATCH" ]]; then
-					repo_issues+=("Orphan: '${title}' still open (${open_issues} open issues) — version already released")
-					warn_issue "$repo" "Orphan: '${title}' still open (${open_issues} open issues) — version already released"
+					repo_issues+=("Orphan: '${title}' still open (${open_issues} open issues) - version already released")
+					warn_issue "$repo" "Orphan: '${title}' still open (${open_issues} open issues) - version already released"
 				fi
 			fi
 			# Check short-form "Nextcloud XX" if the .0.0 is already released
 			if [[ "$LATEST_PATCH" -ge 0 && "$title" == "Nextcloud ${MAJOR}" && "$state" == "open" ]]; then
 				# Only flag if it's not the alt name we already checked above
 				if [[ -z "$RELEASED_MILESTONE_ALT" || "$LATEST_PATCH" -gt 0 ]]; then
-					repo_issues+=("Orphan: '${title}' still open (${open_issues} open issues) — major already released")
-					warn_issue "$repo" "Orphan: '${title}' still open (${open_issues} open issues) — major already released"
+					repo_issues+=("Orphan: '${title}' still open (${open_issues} open issues) - major already released")
+					warn_issue "$repo" "Orphan: '${title}' still open (${open_issues} open issues) - major already released"
 				fi
 			fi
 		done <<< "$all_milestones"
 
-		# Check: naming issues — milestones that look like Nextcloud XX but with
+		# Check: naming issues - milestones that look like Nextcloud XX but with
 		# wrong casing or spacing
 		while IFS=$'\t' read -r title state open_issues due_on; do
 			if [[ "$title" =~ ^[Nn]extcloud\ *${MAJOR} ]] && [[ ! "$title" =~ ^Nextcloud\ ${MAJOR} ]]; then
-				repo_issues+=("Naming issue: '${title}' — expected 'Nextcloud ${MAJOR}...'")
-				warn_issue "$repo" "Naming issue: '${title}' — expected 'Nextcloud ${MAJOR}...'"
+				repo_issues+=("Naming issue: '${title}' - expected 'Nextcloud ${MAJOR}...'")
+				warn_issue "$repo" "Naming issue: '${title}' - expected 'Nextcloud ${MAJOR}...'"
 			fi
 		done <<< "$all_milestones"
 	fi

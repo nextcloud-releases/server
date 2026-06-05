@@ -100,7 +100,7 @@ Update milestones after a stable release. For `v33.0.4` this will:
 # Dry run first
 bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --dry-run
 
-# Apply with due date — the date is set on all newly created milestones
+# Apply with due date - the date is set on all newly created milestones
 # (both 33.0.5 if it was missing, and 33.0.6)
 bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --due-date 2026-07-23
 

@@ -17,8 +17,8 @@ The tagger and builder can also be run manually for re-tagging or testing.
 
 One JSON file per major version lists all bundled apps:
 
-- `stable32.json`, `stable33.json` — 23 apps
-- `stable34.json`, `master.json` — 25 apps (+files_lock, +office)
+- `stable32.json`, `stable33.json` - 23 apps
+- `stable34.json`, `master.json` - 25 apps (+files_lock, +office)
 
 When a new app is added to the release or an existing one is removed, edit the corresponding JSON file.
 

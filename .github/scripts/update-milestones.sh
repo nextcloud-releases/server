@@ -311,7 +311,7 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
 		echo "## Milestone updates for ${TAG}"
 		echo ""
 		if $DRY_RUN; then
-			echo "> **Dry run** — no changes were made"
+			echo "> **Dry run** - no changes were made"
 			echo ""
 		fi
 		cat "$SUMMARY_FILE"
