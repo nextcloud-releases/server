@@ -207,9 +207,16 @@ elif ! $IS_PRERELEASE; then
 	fi
 	NEXT_MILESTONE="Nextcloud ${MAJOR}.${MINOR}.${NEXT_PATCH}"
 
+	# We always keep two open patch milestones. When closing 33.0.4:
+	#   - 33.0.5 becomes the current open milestone (issues move here)
+	#   - 33.0.6 is created as the next upcoming milestone
+	UPCOMING_PATCH=$((PATCH + 2))
+	UPCOMING_MILESTONE="Nextcloud ${MAJOR}.${MINOR}.${UPCOMING_PATCH}"
+
 	echo "Stable release detected (${TAG})."
 	echo "  Close: ${CURRENT_MILESTONES[*]}"
-	echo "  Create: ${NEXT_MILESTONE} (due: ${DUE_ON})"
+	echo "  Move issues to: ${NEXT_MILESTONE}"
+	echo "  Create: ${UPCOMING_MILESTONE} (due: ${DUE_ON})"
 	echo "  Repos: ${REPO_COUNT}"
 	echo ""
 
@@ -231,16 +238,14 @@ elif ! $IS_PRERELEASE; then
 		done
 
 		if [[ -n "$current_number" ]]; then
-			# Order matters: create next → move issues → close current.
-			# This ensures issues always have a destination before the source is closed.
+			# Ensure the next milestone exists (should already from previous release,
+			# but create it if missing so issue moves don't fail)
 			next_number=$(find_milestone "$repo" "$NEXT_MILESTONE")
 			if [[ -z "$next_number" ]]; then
-				create_milestone "$repo" "$NEXT_MILESTONE" "$DUE_ON"
+				create_milestone "$repo" "$NEXT_MILESTONE"
 				next_number=$(find_milestone "$repo" "$NEXT_MILESTONE")
 				repo_created="$NEXT_MILESTONE"
 				TOTAL_CREATED=$((TOTAL_CREATED + 1))
-			else
-				echo "  Milestone '${NEXT_MILESTONE}' already exists (#${next_number})"
 			fi
 
 			# Move open issues before closing
@@ -253,6 +258,21 @@ elif ! $IS_PRERELEASE; then
 			close_milestone "$repo" "$current_number" "$current_title"
 			repo_closed="$current_title"
 			TOTAL_CLOSED=$((TOTAL_CLOSED + 1))
+
+			# Create the upcoming milestone (two ahead) so there are always
+			# two open patch milestones: the next release and the one after
+			upcoming_number=$(find_milestone "$repo" "$UPCOMING_MILESTONE")
+			if [[ -z "$upcoming_number" ]]; then
+				create_milestone "$repo" "$UPCOMING_MILESTONE" "$DUE_ON"
+				if [[ "$repo_created" == "-" ]]; then
+					repo_created="$UPCOMING_MILESTONE"
+				else
+					repo_created="${repo_created}, ${UPCOMING_MILESTONE}"
+				fi
+				TOTAL_CREATED=$((TOTAL_CREATED + 1))
+			else
+				echo "  Milestone '${UPCOMING_MILESTONE}' already exists (#${upcoming_number})"
+			fi
 		else
 			echo "  No milestone found for ${CURRENT_MILESTONES[*]}, skipping"
 		fi
