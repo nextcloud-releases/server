@@ -30,7 +30,7 @@ When a new app is added to the release or an existing one is removed, edit the c
 
 **Rebuild a release**: Actions > "Build and compare release" > enter tag. Compares the result against the release script's archives on the same GitHub release.
 
-**Update milestones**: Actions > "Update milestones on release" > enter tag. Use dry-run to preview. Runs automatically for stable releases and first betas.
+**Update milestones**: Actions > "Update milestones on release" > enter tag. Use dry-run to preview. Runs automatically for stable releases and first betas. Check "audit only" to verify consistency without making changes.
 
 ## Where we are
 

@@ -8,6 +8,8 @@
 #   - First betas (e.g. v35.0.0beta1): create the new major milestone.
 # Can be triggered manually with dry-run or automatically from the release
 # pipeline (release.yml).
+# An audit step runs after every update to verify consistency.
+# Use audit_only to run just the audit without making changes.
 
 name: Update milestones on release
 run-name: "Milestones for ${{ inputs.tag }}"
@@ -27,6 +29,11 @@ on:
         required: true
       dry_run:
         description: 'Preview changes without applying them'
+        required: false
+        type: boolean
+        default: false
+      audit_only:
+        description: 'Only run the audit, skip milestone updates'
         required: false
         type: boolean
         default: false
@@ -81,6 +88,7 @@ jobs:
           echo "config=$CONFIG" >> "$GITHUB_OUTPUT"
 
       - name: Update milestones
+        if: inputs.audit_only != true
         env:
           # RELEASE_TOKEN is needed to manage milestones across org repos;
           # GITHUB_TOKEN is scoped to this repo only and used as fallback.
@@ -91,3 +99,15 @@ jobs:
             ARGS+=("--dry-run")
           fi
           bash .github/scripts/update-milestones.sh "${ARGS[@]}"
+
+      # Audit runs after every update (and on audit_only) to verify
+      # milestone consistency: orphans, missing milestones, naming issues.
+      # Non-blocking on dry-run to avoid failing the pipeline on pre-existing issues.
+      - name: Audit milestones
+        if: inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/audit-milestones.sh \
+            "${{ steps.config.outputs.config }}" \
+            "tag-only.json" || true

@@ -60,6 +60,7 @@ bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
 | `package.sh` | Set permissions, create tar.bz2 + zip, generate checksums |
 | `update-updater-server.sh` | Create a PR to the updater server with release config and tests |
 | `update-milestones.sh` | Close/create milestones and move issues across all release repos |
+| `audit-milestones.sh` | Check milestone consistency: orphans, missing milestones, naming issues |
 
 ## Updater server
 
@@ -105,7 +106,16 @@ Create next major milestone on first beta:
 bash .github/scripts/update-milestones.sh v35.0.0beta1 master.json tag-only.json
 ```
 
-Requires `gh` CLI authenticated with a token that has repo access to all Nextcloud repositories.
+Audit milestone consistency (detects orphans, missing milestones, naming issues):
+
+```bash
+bash .github/scripts/audit-milestones.sh stable33.json tag-only.json
+```
+
+The audit determines expected state from the latest stable release tags on
+`nextcloud-releases/server`. It exits with code 1 if issues are found.
+
+Both scripts require `gh` CLI authenticated with a token that has repo access to all Nextcloud repositories.
 
 ## Notes
 
