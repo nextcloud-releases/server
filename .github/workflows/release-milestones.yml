@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+name: Update milestones on release
+run-name: "Milestones for ${{ inputs.tag }}"
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v33.0.4 or v35.0.0beta1)'
+        required: true
+      dry_run:
+        description: 'Preview changes without applying them'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-milestones-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  milestones:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Check actor permission
+        uses: skjnldsv/check-actor-permission@69e92a3c4711150929bca9fcf34448c5bf5526e7 # v3.0
+        with:
+          require: write
+
+      - name: Checkout config
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Determine config file
+        id: config
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          MAJOR=$(echo "$TAG" | sed 's/^v//' | cut -d. -f1)
+
+          if [[ "$TAG" =~ \.0\.0(alpha|beta) ]]; then
+            CONFIG="master.json"
+          else
+            CONFIG="stable${MAJOR}.json"
+          fi
+
+          if [[ ! -f "$CONFIG" ]]; then
+            echo "::error::Config file $CONFIG not found"
+            exit 1
+          fi
+
+          echo "config=$CONFIG" >> "$GITHUB_OUTPUT"
+
+      - name: Update milestones
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          ARGS=("${{ env.RELEASE_TAG }}" "${{ steps.config.outputs.config }}" "tag-only.json")
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            ARGS+=("--dry-run")
+          fi
+          bash .github/scripts/update-milestones.sh "${ARGS[@]}"

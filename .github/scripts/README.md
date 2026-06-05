@@ -59,6 +59,7 @@ bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
 | `generate-metadata.sh` | Generate migration metadata (NC30+) |
 | `package.sh` | Set permissions, create tar.bz2 + zip, generate checksums |
 | `update-updater-server.sh` | Create a PR to the updater server with release config and tests |
+| `update-milestones.sh` | Close/create milestones and move issues across all release repos |
 
 ## Updater server
 
@@ -85,6 +86,26 @@ bash .github/scripts/update-updater-server.sh v33.0.6 "$BZ2_SIG" "$ZIP_SIG" --re
 **Deploy percentage** is auto-calculated: `.0.0` = 30%, `.0.1` = 70%, `.0.2`+ = 100%. Override with `--deploy N` if needed.
 
 The workflow (`release-updater.yml`) can also be triggered manually from the Actions UI with a dry-run option for testing.
+
+## Milestone management
+
+Update milestones after a stable release (close released milestone, create next, move open issues):
+
+```bash
+# Dry run first
+bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --dry-run
+
+# Apply
+bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json
+```
+
+Create next major milestone on first beta:
+
+```bash
+bash .github/scripts/update-milestones.sh v35.0.0beta1 master.json tag-only.json
+```
+
+Requires `gh` CLI authenticated with a token that has repo access to all Nextcloud repositories.
 
 ## Notes
 
