@@ -88,3 +88,8 @@ for base in "${JS_CONFIG_BASES[@]}"; do
   done
 done
 
+# Remove REUSE sidecar files for sourcemaps. Sourcemaps (*.map) ship in the
+# release, but their *.map.license sidecars are REUSE metadata that only matters
+# in source repos — pure clutter in the tarball.
+find . -type f -name '*.map.license' -delete
+
