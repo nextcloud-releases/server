@@ -1,15 +1,25 @@
 # SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
 # SPDX-License-Identifier: MIT
 
+# Updates GitHub milestones across all release repos.
+# Two modes:
+#   - Stable releases: close the current milestone, create the next patch
+#     milestone, and move open issues forward.
+#   - First betas (e.g. v35.0.0beta1): create the new major milestone.
+# Can be triggered manually with dry-run or automatically from the release
+# pipeline (release.yml).
+
 name: Update milestones on release
 run-name: "Milestones for ${{ inputs.tag }}"
 
 on:
+  # Called from release.yml as part of the release pipeline
   workflow_call:
     inputs:
       tag:
         required: true
         type: string
+  # Allows manual triggering from the Actions tab
   workflow_dispatch:
     inputs:
       tag:
@@ -24,6 +34,8 @@ on:
 permissions:
   contents: read
 
+# Prevent duplicate runs for the same tag (e.g. manual re-trigger while
+# the pipeline-invoked run is still in progress)
 concurrency:
   group: release-milestones-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
@@ -47,6 +59,8 @@ jobs:
         with:
           persist-credentials: false
 
+      # Alpha/beta releases use master.json (they branch from master).
+      # Stable releases use stableXX.json matching their major version.
       - name: Determine config file
         id: config
         run: |
@@ -68,6 +82,8 @@ jobs:
 
       - name: Update milestones
         env:
+          # RELEASE_TOKEN is needed to manage milestones across org repos;
+          # GITHUB_TOKEN is scoped to this repo only and used as fallback.
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           ARGS=("${{ env.RELEASE_TAG }}" "${{ steps.config.outputs.config }}" "tag-only.json")

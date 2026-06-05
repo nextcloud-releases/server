@@ -43,6 +43,8 @@ jobs:
       tag: ${{ inputs.tag }}
     secrets: inherit
 
+  # Runs after tagging completes. Only for stable releases and first betas.
+  # Runs in parallel with changelog and build.
   milestones:
     needs: tag
     if: >-

@@ -15,6 +15,10 @@
 
 set -euo pipefail
 
+# Two modes:
+#  - Stable release (e.g. v33.0.4): close released milestone, create next patch, move open issues
+#  - First beta (e.g. v35.0.0beta1): only create the new major milestone, no close/move
+
 TAG="${1:?Usage: update-milestones.sh <tag> <config.json> <tag-only.json> [--dry-run]}"
 CONFIG="${2:?Missing config.json path}"
 TAG_ONLY="${3:?Missing tag-only.json path}"
@@ -23,6 +27,8 @@ if [[ "${4:-}" == "--dry-run" ]]; then
 	DRY_RUN=true
 fi
 
+# VERSION: full semver without leading "v"; MAJOR/MINOR: numeric components
+# PATCH: third component with pre-release suffixes (alpha/beta/rc…) stripped
 VERSION="${TAG#v}"
 MAJOR=$(echo "$VERSION" | cut -d. -f1)
 MINOR=$(echo "$VERSION" | cut -d. -f2)
@@ -39,6 +45,8 @@ if [[ "$TAG" =~ (alpha|beta|rc) ]]; then
 fi
 
 # Build repo list from config + tag-only
+# stableXX.json contains objects with .repo keys; tag-only.json has plain strings.
+# The jq handles both formats so we can feed both files in a single pipeline.
 REPOS=$(
 	jq -r '
 		if type == "array" and (.[0] | type) == "object" then
@@ -119,7 +127,9 @@ create_milestone() {
 	fi
 }
 
-# Move all open issues from one milestone to another
+# Move all open issues from one milestone to another.
+# Called BEFORE closing the source milestone so no issues get orphaned.
+# Paginates in batches of 100 because repos can have many open issues.
 move_issues() {
 	local repo="$1" from_number="$2" to_number="$3" from_title="$4" to_title="$5"
 	local moved=0
@@ -154,7 +164,8 @@ move_issues() {
 	echo "$moved"
 }
 
-# Compute a due date 4 weeks from now in ISO 8601
+# Compute a due date 4 weeks from now in ISO 8601.
+# Tries GNU date (-d flag) first, falls back to BSD/macOS date (-v flag).
 due_date_4_weeks() {
 	date -u -d "+4 weeks" "+%Y-%m-%dT00:00:00Z" 2>/dev/null \
 		|| date -u -v+4w "+%Y-%m-%dT00:00:00Z" 2>/dev/null \
@@ -187,7 +198,8 @@ elif ! $IS_PRERELEASE; then
 	NEXT_PATCH=$((PATCH + 1))
 	DUE_ON=$(due_date_4_weeks)
 
-	# For v34.0.0, also try "Nextcloud 34" as milestone name (major releases use short form)
+	# Naming convention: initial major releases (v34.0.0) may use short form "Nextcloud 34",
+	# while patch releases always use full form "Nextcloud 34.0.1". Try both for .0.0.
 	if [[ "$PATCH" -eq 0 && "$MINOR" -eq 0 ]]; then
 		CURRENT_MILESTONES=("Nextcloud ${MAJOR}.${MINOR}.${PATCH}" "Nextcloud ${MAJOR}")
 	else
@@ -219,7 +231,8 @@ elif ! $IS_PRERELEASE; then
 		done
 
 		if [[ -n "$current_number" ]]; then
-			# Create next milestone first (so we can move issues to it)
+			# Order matters: create next → move issues → close current.
+			# This ensures issues always have a destination before the source is closed.
 			next_number=$(find_milestone "$repo" "$NEXT_MILESTONE")
 			if [[ -z "$next_number" ]]; then
 				create_milestone "$repo" "$NEXT_MILESTONE" "$DUE_ON"
