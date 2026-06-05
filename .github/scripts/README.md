@@ -96,7 +96,10 @@ Update milestones after a stable release (close released milestone, create next,
 # Dry run first
 bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --dry-run
 
-# Apply
+# Apply with due date for new milestones
+bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --due-date 2026-07-23
+
+# Apply without due date (can be set later)
 bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json
 ```
 

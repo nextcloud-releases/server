@@ -32,6 +32,11 @@ on:
         required: false
         type: boolean
         default: false
+      due_date:
+        description: 'Due date for new milestones (YYYY-MM-DD, e.g. 2026-07-23). Leave empty to skip.'
+        required: false
+        type: string
+        default: ''
       audit_only:
         description: 'Only run the audit, skip milestone updates'
         required: false
@@ -97,6 +102,9 @@ jobs:
           ARGS=("${{ env.RELEASE_TAG }}" "${{ steps.config.outputs.config }}" "tag-only.json")
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             ARGS+=("--dry-run")
+          fi
+          if [[ -n "${{ inputs.due_date }}" ]]; then
+            ARGS+=("--due-date" "${{ inputs.due_date }}")
           fi
           bash .github/scripts/update-milestones.sh "${ARGS[@]}"
 

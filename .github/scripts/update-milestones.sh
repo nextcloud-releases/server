@@ -6,10 +6,15 @@
 # or first beta of a new major version.
 #
 # Usage:
-#   update-milestones.sh <tag> <config.json> <tag-only.json> [--dry-run]
+#   update-milestones.sh <tag> <config.json> <tag-only.json> [options]
+#
+# Options:
+#   --dry-run              Preview changes without applying them
+#   --due-date YYYY-MM-DD  Set due date on newly created milestones
 #
 # Examples:
 #   update-milestones.sh v33.0.4 stable33.json tag-only.json
+#   update-milestones.sh v33.0.4 stable33.json tag-only.json --due-date 2026-07-23
 #   update-milestones.sh v35.0.0beta1 master.json tag-only.json
 #   update-milestones.sh v33.0.4 stable33.json tag-only.json --dry-run
 
@@ -19,12 +24,30 @@ set -euo pipefail
 #  - Stable release (e.g. v33.0.4): close released milestone, create next patch, move open issues
 #  - First beta (e.g. v35.0.0beta1): only create the new major milestone, no close/move
 
-TAG="${1:?Usage: update-milestones.sh <tag> <config.json> <tag-only.json> [--dry-run]}"
+TAG="${1:?Usage: update-milestones.sh <tag> <config.json> <tag-only.json> [options]}"
 CONFIG="${2:?Missing config.json path}"
 TAG_ONLY="${3:?Missing tag-only.json path}"
+shift 3
+
 DRY_RUN=false
-if [[ "${4:-}" == "--dry-run" ]]; then
-	DRY_RUN=true
+DUE_DATE=""
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--dry-run)  DRY_RUN=true ;;
+		--due-date) DUE_DATE="${2:?--due-date requires a YYYY-MM-DD value}"; shift ;;
+		*)          echo "Unknown option: $1"; exit 1 ;;
+	esac
+	shift
+done
+
+# Convert due date to ISO 8601 format expected by the GitHub API
+DUE_ON=""
+if [[ -n "$DUE_DATE" ]]; then
+	if [[ ! "$DUE_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+		echo "::error::Invalid date format '${DUE_DATE}', expected YYYY-MM-DD"
+		exit 1
+	fi
+	DUE_ON="${DUE_DATE}T00:00:00Z"
 fi
 
 # VERSION: full semver without leading "v"; MAJOR/MINOR: numeric components
@@ -176,7 +199,7 @@ if $IS_FIRST_BETA; then
 		existing=$(find_milestone "$repo" "$NEXT_MAJOR_MILESTONE")
 		repo_created="-"
 		if [[ -z "$existing" ]]; then
-			create_milestone "$repo" "$NEXT_MAJOR_MILESTONE"
+			create_milestone "$repo" "$NEXT_MAJOR_MILESTONE" "$DUE_ON"
 			repo_created="$NEXT_MAJOR_MILESTONE"
 			TOTAL_CREATED=$((TOTAL_CREATED + 1))
 		else
@@ -207,7 +230,7 @@ elif ! $IS_PRERELEASE; then
 	echo "Stable release detected (${TAG})."
 	echo "  Close: ${CURRENT_MILESTONES[*]}"
 	echo "  Move issues to: ${NEXT_MILESTONE}"
-	echo "  Create: ${UPCOMING_MILESTONE}"
+	echo "  Create: ${UPCOMING_MILESTONE}${DUE_ON:+ (due: ${DUE_DATE})}"
 	echo "  Repos: ${REPO_COUNT}"
 	echo ""
 
@@ -254,7 +277,7 @@ elif ! $IS_PRERELEASE; then
 			# two open patch milestones: the next release and the one after
 			upcoming_number=$(find_milestone "$repo" "$UPCOMING_MILESTONE")
 			if [[ -z "$upcoming_number" ]]; then
-				create_milestone "$repo" "$UPCOMING_MILESTONE"
+				create_milestone "$repo" "$UPCOMING_MILESTONE" "$DUE_ON"
 				if [[ "$repo_created" == "-" ]]; then
 					repo_created="$UPCOMING_MILESTONE"
 				else
