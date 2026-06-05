@@ -90,20 +90,25 @@ The workflow (`release-updater.yml`) can also be triggered manually from the Act
 
 ## Milestone management
 
-Update milestones after a stable release (close released milestone, create next, move open issues):
+Update milestones after a stable release. For `v33.0.4` this will:
+
+1. Close `Nextcloud 33.0.4` across all repos
+2. Move open issues to `Nextcloud 33.0.5` (should already exist from previous release)
+3. Create `Nextcloud 33.0.6` so two open patch milestones always exist (33.0.5 + 33.0.6)
 
 ```bash
 # Dry run first
 bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --dry-run
 
-# Apply with due date for new milestones
+# Apply with due date — the date is set on all newly created milestones
+# (both 33.0.5 if it was missing, and 33.0.6)
 bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --due-date 2026-07-23
 
-# Apply without due date (can be set later)
+# Apply without due date (can be set later manually)
 bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json
 ```
 
-Create next major milestone on first beta:
+Create next major milestone on first beta (e.g. `v35.0.0beta1` creates `Nextcloud 35`):
 
 ```bash
 bash .github/scripts/update-milestones.sh v35.0.0beta1 master.json tag-only.json
