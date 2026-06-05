@@ -20,6 +20,7 @@ jobs:
     secrets: inherit
 
   changelog:
+    needs: tag
     if: startsWith(inputs.tag, 'v')
     uses: ./.github/workflows/release-changelog.yml
     with:
@@ -27,8 +28,8 @@ jobs:
     secrets: inherit
 
   build:
-    if: startsWith(inputs.tag, 'v')
     needs: [tag, changelog]
+    if: startsWith(inputs.tag, 'v')
     uses: ./.github/workflows/release-build.yml
     with:
       tag: ${{ inputs.tag }}
