@@ -39,5 +39,9 @@ else
   rm -rf .direnv .well-known config/config.php data
 fi
 
+# Strip REUSE sidecar files for sourcemaps. *.map files ship in the release,
+# but *.map.license sidecars are source-repo metadata — clutter in the tarball.
+find . -type f -name '*.map.license' -delete
+
 # Remove .git last (needed above for git ls-files)
 rm -rf .git
