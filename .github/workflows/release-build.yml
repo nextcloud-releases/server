@@ -520,7 +520,8 @@ jobs:
           # - .chunk.(mjs|css): hash-based filenames change with any code diff
           # - *.config.*: workflow strips dev configs the release script kept
           # - l10n: translation files may update between builds
-          KNOWN_PATTERN='(signature\.json|core/doc/|Nextcloud Manual\.pdf|\.chunk\.(mjs|css)|\.config\.(js|ts|mjs|cjs)$|\.prettierignore|/l10n/[^/]*\.(js|json)$)'
+          # - *.map.license: workflow strips REUSE sourcemap sidecars; official release keeps them
+          KNOWN_PATTERN='(signature\.json|core/doc/|Nextcloud Manual\.pdf|\.chunk\.(mjs|css)|\.config\.(js|ts|mjs|cjs)$|\.prettierignore|/l10n/[^/]*\.(js|json)$|\.map\.license$)'
           UNEXPECTED_MISSING=$(grep -v -E "$KNOWN_PATTERN" /tmp/only-in-existing.txt | wc -l)
           UNEXPECTED_EXTRA=$(grep -v -E "$KNOWN_PATTERN" /tmp/only-in-new.txt | wc -l)
 
