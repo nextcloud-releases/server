@@ -1,0 +1,158 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+name: Update updater server
+run-name: "Updater PR ${{ inputs.tag }}"
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      deploy:
+        required: false
+        type: number
+        default: 100
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v34.0.1)'
+        required: true
+      deploy:
+        description: 'Deploy percentage (default 100, use 30 for first stable)'
+        type: number
+        default: 100
+      dry_run:
+        description: 'Dry run (show diff, no PR)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-updater-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check actor permission
+        uses: skjnldsv/check-actor-permission@69e92a3c4711150929bca9fcf34448c5bf5526e7 # v3.0
+        with:
+          require: write
+
+      - name: Checkout scripts
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+        with:
+          php-version: '8.2'
+
+      - name: Parse version
+        id: parse
+        run: |
+          TAG="${{ inputs.tag }}"
+          VERSION=$(echo "$TAG" | sed 's/^v//')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # When called from the release pipeline, the build artifacts (including
+      # .sig files) are available from the previous job. When triggered
+      # manually, download and sign the archives ourselves.
+      - name: Download release artifact
+        id: artifact
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release
+          path: /tmp/release
+
+      - name: Download and sign archives (manual trigger)
+        id: sign
+        if: steps.artifact.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+          SIGN_KEY: ${{ secrets.SIGN_PRIVATE_KEY }}
+        run: |
+          VERSION="${{ steps.parse.outputs.version }}"
+          mkdir -p /tmp/release
+
+          # Try GitHub release first, then download server
+          for ext in tar.bz2 zip; do
+            archive="nextcloud-${VERSION}.${ext}"
+            if gh release download "${{ inputs.tag }}" \
+              --repo "${{ github.repository }}" \
+              --pattern "$archive" \
+              --dir /tmp/release 2>/dev/null; then
+              echo "::notice::Downloaded ${archive} from GitHub release"
+            elif curl -fsSL -o "/tmp/release/${archive}" \
+              "https://download.nextcloud.com/server/releases/${archive}" 2>/dev/null; then
+              echo "::notice::Downloaded ${archive} from download server"
+            elif curl -fsSL -o "/tmp/release/${archive}" \
+              "https://download.nextcloud.com/server/prereleases/${archive}" 2>/dev/null; then
+              echo "::notice::Downloaded ${archive} from prereleases"
+            else
+              echo "::error::Could not download ${archive}"
+              exit 1
+            fi
+          done
+
+          # Sign the archives
+          if [ -z "$SIGN_KEY" ]; then
+            echo "::error::SIGN_PRIVATE_KEY required for manual trigger"
+            exit 1
+          fi
+          echo "$SIGN_KEY" > /tmp/signing-key.pem
+          for ext in tar.bz2 zip; do
+            archive="/tmp/release/nextcloud-${VERSION}.${ext}"
+            sig=$(openssl dgst -sha512 -sign /tmp/signing-key.pem "$archive" | openssl base64 | tr -d '\n')
+            echo "$sig" > "${archive}.sig"
+          done
+          rm -f /tmp/signing-key.pem
+
+      - name: Read signatures
+        id: sigs
+        run: |
+          VERSION="${{ steps.parse.outputs.version }}"
+          BZ2_SIG=$(cat "/tmp/release/nextcloud-${VERSION}.tar.bz2.sig")
+          ZIP_SIG=$(cat "/tmp/release/nextcloud-${VERSION}.zip.sig")
+          echo "bz2=${BZ2_SIG}" >> "$GITHUB_OUTPUT"
+          echo "zip=${ZIP_SIG}" >> "$GITHUB_OUTPUT"
+          echo "::notice::bz2 sig length: ${#BZ2_SIG}, zip sig length: ${#ZIP_SIG}"
+
+      - name: Run update script
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+        run: |
+          ARGS=("${{ inputs.tag }}" "${{ steps.sigs.outputs.bz2 }}" "${{ steps.sigs.outputs.zip }}")
+
+          DEPLOY="${{ inputs.deploy }}"
+          if [ "$DEPLOY" != "100" ] && [ -n "$DEPLOY" ]; then
+            ARGS+=(--deploy "$DEPLOY")
+          fi
+
+          if [ "${{ inputs.dry_run || 'false' }}" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+
+          bash .github/scripts/update-updater-server.sh "${ARGS[@]}"
+
+      - name: Write step summary
+        if: always()
+        run: |
+          VERSION="${{ steps.parse.outputs.version }}"
+          DEPLOY="${{ inputs.deploy }}"
+          DRY="${{ inputs.dry_run || 'false' }}"
+          {
+            echo "## Updater Server Update: ${{ inputs.tag }}"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version | ${VERSION} |"
+            echo "| Deploy | ${DEPLOY}% |"
+            echo "| Dry run | ${DRY} |"
+          } >> "$GITHUB_STEP_SUMMARY"
