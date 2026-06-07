@@ -13,7 +13,7 @@ on:
       deploy:
         required: false
         type: number
-        default: 100
+        default: 0
   workflow_dispatch:
     inputs:
       tag:
@@ -60,64 +60,30 @@ jobs:
           VERSION=$(echo "$TAG" | sed 's/^v//')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # When called from the release pipeline, the build artifacts (including
-      # .sig files) are available from the previous job. When triggered
-      # manually, download and sign the archives ourselves.
-      - name: Download release artifact
-        id: artifact
-        continue-on-error: true
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: release
-          path: /tmp/release
-
-      - name: Download and sign archives (manual trigger)
-        id: sign
-        if: steps.artifact.outcome != 'success'
+      - name: Download signatures from release
+        id: sigs
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
-          SIGN_KEY: ${{ secrets.SIGN_PRIVATE_KEY }}
         run: |
+          TAG="${{ inputs.tag }}"
           VERSION="${{ steps.parse.outputs.version }}"
           mkdir -p /tmp/release
 
-          # Try GitHub release first, then download server
+          # Download .sig files attached to the GitHub release
           for ext in tar.bz2 zip; do
-            archive="nextcloud-${VERSION}.${ext}"
-            if gh release download "${{ inputs.tag }}" \
+            sigfile="nextcloud-${VERSION}.${ext}.sig"
+            if gh release download "$TAG" \
               --repo "${{ github.repository }}" \
-              --pattern "$archive" \
+              --pattern "$sigfile" \
               --dir /tmp/release 2>/dev/null; then
-              echo "::notice::Downloaded ${archive} from GitHub release"
-            elif curl -fsSL -o "/tmp/release/${archive}" \
-              "https://download.nextcloud.com/server/releases/${archive}" 2>/dev/null; then
-              echo "::notice::Downloaded ${archive} from download server"
-            elif curl -fsSL -o "/tmp/release/${archive}" \
-              "https://download.nextcloud.com/server/prereleases/${archive}" 2>/dev/null; then
-              echo "::notice::Downloaded ${archive} from prereleases"
+              echo "::notice::Downloaded ${sigfile} from release"
             else
-              echo "::error::Could not download ${archive}"
+              echo "::error::Signature file ${sigfile} not found on release ${TAG}"
+              echo "::error::Run the build workflow first, or attach .sig files manually"
               exit 1
             fi
           done
 
-          # Sign the archives
-          if [ -z "$SIGN_KEY" ]; then
-            echo "::error::SIGN_PRIVATE_KEY required for manual trigger"
-            exit 1
-          fi
-          echo "$SIGN_KEY" > /tmp/signing-key.pem
-          for ext in tar.bz2 zip; do
-            archive="/tmp/release/nextcloud-${VERSION}.${ext}"
-            sig=$(openssl dgst -sha512 -sign /tmp/signing-key.pem "$archive" | openssl base64 | tr -d '\n')
-            echo "$sig" > "${archive}.sig"
-          done
-          rm -f /tmp/signing-key.pem
-
-      - name: Read signatures
-        id: sigs
-        run: |
-          VERSION="${{ steps.parse.outputs.version }}"
           BZ2_SIG=$(cat "/tmp/release/nextcloud-${VERSION}.tar.bz2.sig")
           ZIP_SIG=$(cat "/tmp/release/nextcloud-${VERSION}.zip.sig")
           echo "bz2=${BZ2_SIG}" >> "$GITHUB_OUTPUT"
@@ -154,6 +120,6 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| Version | ${VERSION} |"
-            echo "| Deploy | ${DEPLOY}% |"
+            echo "| Deploy | ${DEPLOY}% (0 = auto) |"
             echo "| Dry run | ${DRY} |"
           } >> "$GITHUB_STEP_SUMMARY"
