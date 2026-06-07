@@ -20,9 +20,9 @@ on:
         description: 'Release tag (e.g., v34.0.1)'
         required: true
       deploy:
-        description: 'Deploy percentage (default 100, use 30 for first stable)'
+        description: 'Deploy percentage (auto: .0.0=30%, .0.1=70%, else 100%. Set 0 for auto)'
         type: number
-        default: 100
+        default: 0
       dry_run:
         description: 'Dry run (show diff, no PR)'
         type: boolean
@@ -131,9 +131,10 @@ jobs:
           ARGS=("${{ inputs.tag }}" "${{ steps.sigs.outputs.bz2 }}" "${{ steps.sigs.outputs.zip }}")
 
           DEPLOY="${{ inputs.deploy }}"
-          if [ "$DEPLOY" != "100" ] && [ -n "$DEPLOY" ]; then
+          if [ "$DEPLOY" != "0" ] && [ -n "$DEPLOY" ]; then
             ARGS+=(--deploy "$DEPLOY")
           fi
+          # deploy=0 or omitted → script auto-calculates from version
 
           if [ "${{ inputs.dry_run || 'false' }}" = "true" ]; then
             ARGS+=(--dry-run)

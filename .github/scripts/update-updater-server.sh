@@ -9,7 +9,7 @@
 #   update-updater-server.sh <tag> <bz2-sig> <zip-sig> [options]
 #
 # Options:
-#   --deploy <N>      Deploy percentage (default: 100, omitted from JSON when 100)
+#   --deploy <N>      Deploy percentage (auto: .0.0=30%, .0.1=70%, else 100%)
 #   --dry-run         Show diff without creating a PR
 #   --repo-dir <dir>  Use existing updater_server checkout instead of cloning
 #
@@ -20,8 +20,11 @@
 #   # RC with dry-run
 #   update-updater-server.sh v34.0.0rc6 "$BZ2_SIG" "$ZIP_SIG" --dry-run
 #
-#   # First stable at 25% rollout
-#   update-updater-server.sh v34.0.0 "$BZ2_SIG" "$ZIP_SIG" --deploy 25
+#   # First stable (auto-deploys at 30%)
+#   update-updater-server.sh v34.0.0 "$BZ2_SIG" "$ZIP_SIG"
+#
+#   # Override auto-deploy
+#   update-updater-server.sh v34.0.0 "$BZ2_SIG" "$ZIP_SIG" --deploy 50
 
 set -euo pipefail
 
@@ -66,7 +69,7 @@ ZIP_SIG="${3:?Missing zip signature}"
 shift 3
 
 DRY_RUN=false
-DEPLOY=100
+DEPLOY=""
 REPO_DIR=""
 
 while [[ $# -gt 0 ]]; do
@@ -121,6 +124,19 @@ fi
 
 CHANNEL="$STABILITY"
 [[ "$RELEASE_TYPE" == "first_stable" ]] && CHANNEL="stable"
+
+# Auto-calculate deploy percentage if not explicitly set.
+# Pattern: X.0.0 = 30%, X.0.1 = 70%, X.0.2+ = 100%
+if [[ -z "$DEPLOY" ]]; then
+	if [[ "$RELEASE_TYPE" == "first_stable" ]]; then
+		DEPLOY=30
+	elif [[ "$STABILITY" == "stable" && "$PATCH" -eq 1 && "$MINOR" -eq 0 ]]; then
+		DEPLOY=70
+	else
+		DEPLOY=100
+	fi
+	info "Auto-calculated deploy: ${DEPLOY}%"
+fi
 
 info "Release: ${VERSION_STRING} (type=${RELEASE_TYPE}, stability=${STABILITY}, deploy=${DEPLOY}%)"
 
