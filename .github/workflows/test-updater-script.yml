@@ -7,7 +7,6 @@ on:
   pull_request:
     paths:
       - '.github/scripts/update-updater-server.sh'
-      - '.github/scripts/test-updater-script.sh'
       - 'tests/updater-script/**'
 
 permissions:
@@ -28,7 +27,7 @@ jobs:
           tools: none
 
       - name: Shellcheck
-        run: shellcheck .github/scripts/update-updater-server.sh .github/scripts/test-updater-script.sh
+        run: shellcheck .github/scripts/update-updater-server.sh tests/updater-script/run.sh
 
       - name: Run snapshot tests
-        run: bash .github/scripts/test-updater-script.sh
+        run: bash tests/updater-script/run.sh

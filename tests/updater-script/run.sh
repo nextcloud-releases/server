@@ -14,11 +14,11 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BASE_DIR="$REPO_DIR/tests/updater-script/base"
-SCENARIOS_DIR="$REPO_DIR/tests/updater-script/scenarios"
-SCRIPT="$SCRIPT_DIR/update-updater-server.sh"
+TEST_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$TEST_DIR/../.." && pwd)"
+BASE_DIR="$TEST_DIR/base"
+SCENARIOS_DIR="$TEST_DIR/scenarios"
+SCRIPT="$REPO_DIR/.github/scripts/update-updater-server.sh"
 
 UPDATE_MODE=false
 [[ "${1:-}" == "--update" ]] && UPDATE_MODE=true
