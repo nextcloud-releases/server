@@ -93,8 +93,13 @@ MODIFIER=$(echo "$VERSION" | grep -oiP '(rc|beta|alpha)\d+$' || true)
 
 if [[ -n "$MODIFIER" ]]; then
 	# RC/beta/alpha release
-	MODIFIER_UPPER=$(echo "$MODIFIER" | sed -E 's/(rc|beta|alpha)/\U&/; s/([A-Za-z]+)([0-9]+)/\1 \2/')
-	VERSION_STRING="${MAJOR}.${MINOR}.${PATCH} ${MODIFIER_UPPER}"
+	# RC: uppercase, no space (RC5). beta/alpha: lowercase, space before number (beta 5).
+	if [[ "$MODIFIER" =~ ^[Rr][Cc] ]]; then
+		MODIFIER_DISPLAY=$(echo "$MODIFIER" | tr '[:lower:]' '[:upper:]')
+	else
+		MODIFIER_DISPLAY=$(echo "$MODIFIER" | sed -E 's/([a-zA-Z]+)([0-9]+)/\1 \2/')
+	fi
+	VERSION_STRING="${MAJOR}.${MINOR}.${PATCH} ${MODIFIER_DISPLAY}"
 	URL_VERSION="${MAJOR}.${MINOR}.${PATCH}$(echo "$MODIFIER" | tr '[:upper:]' '[:lower:]')"
 	URL_DIR="prereleases"
 	STABILITY="beta"
@@ -453,22 +458,16 @@ SCENARIO
 
 	# Update latest.feature
 	# Find current latest stable version and replace
-	CURRENT_LATEST_STABLE=$(grep -A2 'latest stable release' "$LATEST_FEATURE" \
+	CURRENT_LATEST_STABLE=$(grep -A4 'latest stable release' "$LATEST_FEATURE" \
 		| grep 'Version "' | grep -oP 'Version "\K[^"]+')
 	CURRENT_LATEST_STABLE_URL=$(echo "$CURRENT_LATEST_STABLE" | sed 's/ //g' | tr '[:upper:]' '[:lower:]')
 
 	if [[ -n "$CURRENT_LATEST_STABLE" ]]; then
-		sed -i "/latest stable/,/URL to download/{
-			s|Version \"${CURRENT_LATEST_STABLE}\"|Version \"${VERSION_STRING}\"|
-			s|nextcloud-${CURRENT_LATEST_STABLE_URL}\.zip|nextcloud-${URL_VERSION}.zip|
-		}" "$LATEST_FEATURE"
+		sed -i "/I want to know the latest stable/,/URL to download/ { s|Version \"${CURRENT_LATEST_STABLE}\"|Version \"${VERSION_STRING}\"|; s|nextcloud-${CURRENT_LATEST_STABLE_URL}\.zip|nextcloud-${URL_VERSION}.zip|; }" "$LATEST_FEATURE"
 	fi
 
 	# Update beta latest — now points to stable (no more RC)
-	sed -i "/latest beta/,/URL to download/{
-		s|\"${OLD_VERSION_STRING}\"|\"${VERSION_STRING}\"|
-		s|prereleases/nextcloud-${OLD_URL_VERSION}\.zip|releases/nextcloud-${URL_VERSION}.zip|
-	}" "$LATEST_FEATURE"
+	sed -i "/I want to know the latest beta/,/URL to download/ { s|\"${OLD_VERSION_STRING}\"|\"${VERSION_STRING}\"|; s|prereleases/nextcloud-${OLD_URL_VERSION}\.zip|releases/nextcloud-${URL_VERSION}.zip|; }" "$LATEST_FEATURE"
 }
 
 update_features_first_prerelease() {
@@ -532,20 +531,14 @@ ${NEW_SIG_BLOCK}
 SCENARIO
 
 	# Update latest.feature — beta now points to this pre-release
-	CURRENT_LATEST_BETA=$(grep -A2 'latest beta release' "$LATEST_FEATURE" \
+	CURRENT_LATEST_BETA=$(grep -A4 'latest beta release' "$LATEST_FEATURE" \
 		| grep 'Version "' | grep -oP 'Version "\K[^"]+')
 	CURRENT_LATEST_BETA_URL=$(echo "$CURRENT_LATEST_BETA" | sed 's/ //g' | tr '[:upper:]' '[:lower:]')
 
 	if [[ -n "$CURRENT_LATEST_BETA" ]]; then
-		sed -i "/latest beta/,/URL to download/{
-			s|Version \"${CURRENT_LATEST_BETA}\"|Version \"${VERSION_STRING}\"|
-			s|nextcloud-${CURRENT_LATEST_BETA_URL}\.zip|nextcloud-${URL_VERSION}.zip|
-		}" "$LATEST_FEATURE"
-
+		sed -i "/I want to know the latest beta/,/URL to download/ { s|Version \"${CURRENT_LATEST_BETA}\"|Version \"${VERSION_STRING}\"|; s|nextcloud-${CURRENT_LATEST_BETA_URL}\.zip|nextcloud-${URL_VERSION}.zip|; }" "$LATEST_FEATURE"
 		# Fix prereleases vs releases path
-		sed -i "/latest beta/,/URL to download/{
-			s|server/releases/nextcloud-${URL_VERSION}|server/${URL_DIR}/nextcloud-${URL_VERSION}|
-		}" "$LATEST_FEATURE"
+		sed -i "/I want to know the latest beta/,/URL to download/ { s|server/releases/nextcloud-${URL_VERSION}|server/${URL_DIR}/nextcloud-${URL_VERSION}|; }" "$LATEST_FEATURE"
 	fi
 }
 
