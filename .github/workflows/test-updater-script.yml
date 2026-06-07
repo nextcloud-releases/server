@@ -28,7 +28,7 @@ jobs:
           tools: none
 
       - name: Shellcheck
-        run: shellcheck .github/scripts/*.sh
+        run: shellcheck .github/scripts/update-updater-server.sh .github/scripts/test-updater-script.sh
 
       - name: Run snapshot tests
         run: bash .github/scripts/test-updater-script.sh

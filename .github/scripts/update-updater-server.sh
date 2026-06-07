@@ -87,7 +87,7 @@ done
 
 # ─── Parse tag ────────────────────────────────────────────────────────────────
 
-VERSION=$(echo "$TAG" | sed 's/^v//')
+VERSION="${TAG#v}"
 MAJOR=$(echo "$VERSION" | grep -oP '^\d+')
 MINOR=$(echo "$VERSION" | cut -d. -f2)
 PATCH=$(echo "$VERSION" | cut -d. -f3 | grep -oP '^\d+')
@@ -166,6 +166,8 @@ else
 	fi
 	[[ -z "$VERSION_PHP" ]] && die "Could not fetch version.php from nextcloud/server"
 
+	# $OC_Version is a literal PHP variable name, not a shell expansion
+	# shellcheck disable=SC2016
 	INTERNAL_VERSION=$(echo "$VERSION_PHP" | grep -oP '\$OC_Version\s*=\s*\[\K[0-9, ]+' | tr -d ' ' | tr ',' '.')
 	[[ -z "$INTERNAL_VERSION" ]] && die "Could not parse OC_Version from version.php"
 
@@ -175,9 +177,7 @@ fi
 # ─── Fetch minPHP (needed for new major entries) ─────────────────────────────
 
 fetch_min_php() {
-	local vcheck
-	vcheck=$(echo "$VERSION_PHP" | cat)
-	# Also try versioncheck.php directly
+	# Try versioncheck.php directly
 	local versioncheck
 	versioncheck=$(curl -sf "https://raw.githubusercontent.com/nextcloud/server/refs/tags/${TAG}/lib/versioncheck.php" || true)
 	if [[ -z "$versioncheck" ]]; then
