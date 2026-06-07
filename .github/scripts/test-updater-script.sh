@@ -51,6 +51,13 @@ run_scenario() {
 	work_dir=$(mktemp -d)
 	cp -r "$BASE_DIR"/* "$work_dir/"
 
+	# Apply scenario-specific overrides on top of base (if any)
+	if [[ -d "$scenario_dir/override" ]]; then
+		cp -r "$scenario_dir/override/"* "$work_dir/"
+		# Regenerate config.php from overridden JSON
+		(cd "$work_dir" && make config/config.php > /dev/null 2>&1)
+	fi
+
 	# Initialize as git repo (script uses git diff)
 	(cd "$work_dir" && git init -q \
 		&& git config user.email "test@test" && git config user.name "test" \
