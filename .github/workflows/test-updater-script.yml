@@ -4,6 +4,12 @@
 name: Test updater script
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/scripts/update-updater-server.sh'
+      - 'tests/updater-script/**'
   pull_request:
     paths:
       - '.github/scripts/update-updater-server.sh'
