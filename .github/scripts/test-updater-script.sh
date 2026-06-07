@@ -52,7 +52,9 @@ run_scenario() {
 	cp -r "$BASE_DIR"/* "$work_dir/"
 
 	# Initialize as git repo (script uses git diff)
-	(cd "$work_dir" && git init -q && git add -A && git commit -q -m "base" --no-gpg-sign)
+	(cd "$work_dir" && git init -q \
+		&& git config user.email "test@test" && git config user.name "test" \
+		&& git add -A && git commit -q -m "base" --no-gpg-sign)
 
 	# Build script args
 	local args=("$TAG" "$FAKE_BZ2" "$FAKE_ZIP" --dry-run --repo-dir "$work_dir" --internal-version "$INTERNAL_VERSION")
