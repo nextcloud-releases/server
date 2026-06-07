@@ -9,7 +9,8 @@
 #   update-updater-server.sh <tag> <bz2-sig> <zip-sig> [options]
 #
 # Options:
-#   --deploy <N>      Deploy percentage (auto: .0.0=30%, .0.1=70%, else 100%)
+#   --deploy <N>              Deploy percentage (auto: .0.0=30%, .0.1=70%, else 100%)
+#   --internal-version X.Y.Z.N  Skip version.php fetch, use this internal version
 #   --dry-run         Show diff without creating a PR
 #   --repo-dir <dir>  Use existing updater_server checkout instead of cloning
 #
@@ -56,6 +57,7 @@ replace_signature() {
 
 	for i in "${!old_lines[@]}"; do
 		[[ -z "${old_lines[$i]}" ]] && continue
+		[[ -z "${new_lines[$i]+x}" ]] && continue
 		# base64 chars (A-Za-z0-9+/=) are safe in sed with | delimiter
 		sed -i "s|${old_lines[$i]}|${new_lines[$i]}|g" "${files[@]}"
 	done
@@ -63,7 +65,7 @@ replace_signature() {
 
 # ─── Parse arguments ─────────────────────────────────────────────────────────
 
-TAG="${1:?Usage: update-updater-server.sh <tag> <bz2-sig> <zip-sig> [--deploy N] [--dry-run] [--repo-dir dir]}"
+TAG="${1:?Usage: update-updater-server.sh <tag> <bz2-sig> <zip-sig> [--deploy N] [--dry-run] [--repo-dir dir] [--internal-version X.Y.Z.N]}"
 BZ2_SIG="${2:?Missing bz2 signature}"
 ZIP_SIG="${3:?Missing zip signature}"
 shift 3
@@ -71,12 +73,14 @@ shift 3
 DRY_RUN=false
 DEPLOY=""
 REPO_DIR=""
+OVERRIDE_INTERNAL=""
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--dry-run)  DRY_RUN=true; shift ;;
-		--deploy)   DEPLOY="${2:?--deploy requires a number}"; shift 2 ;;
-		--repo-dir) REPO_DIR="${2:?--repo-dir requires a path}"; shift 2 ;;
+		--dry-run)            DRY_RUN=true; shift ;;
+		--deploy)             DEPLOY="${2:?--deploy requires a number}"; shift 2 ;;
+		--repo-dir)           REPO_DIR="${2:?--repo-dir requires a path}"; shift 2 ;;
+		--internal-version)   OVERRIDE_INTERNAL="${2:?--internal-version requires X.Y.Z.N}"; shift 2 ;;
 		*) die "Unknown option: $1" ;;
 	esac
 done
@@ -147,20 +151,26 @@ info "Release: ${VERSION_STRING} (type=${RELEASE_TYPE}, stability=${STABILITY}, 
 
 # ─── Fetch internal version from version.php ──────────────────────────────────
 
-info "Fetching internal version from nextcloud/server@${TAG}..."
+if [[ -n "$OVERRIDE_INTERNAL" ]]; then
+	INTERNAL_VERSION="$OVERRIDE_INTERNAL"
+	VERSION_PHP=""
+	info "Using provided internal version: ${INTERNAL_VERSION}"
+else
+	info "Fetching internal version from nextcloud/server@${TAG}..."
 
-VERSION_PHP=$(curl -sf "https://raw.githubusercontent.com/nextcloud/server/refs/tags/${TAG}/version.php" || true)
-if [[ -z "$VERSION_PHP" ]]; then
-	# Tag might not exist yet, try the branch
-	BRANCH=$([[ "$STABILITY" == "beta" && "$PATCH" -eq 0 ]] && echo "master" || echo "stable${MAJOR}")
-	VERSION_PHP=$(curl -sf "https://raw.githubusercontent.com/nextcloud/server/refs/heads/${BRANCH}/version.php" || true)
+	VERSION_PHP=$(curl -sf "https://raw.githubusercontent.com/nextcloud/server/refs/tags/${TAG}/version.php" || true)
+	if [[ -z "$VERSION_PHP" ]]; then
+		# Tag might not exist yet, try the branch
+		BRANCH=$([[ "$STABILITY" == "beta" && "$PATCH" -eq 0 ]] && echo "master" || echo "stable${MAJOR}")
+		VERSION_PHP=$(curl -sf "https://raw.githubusercontent.com/nextcloud/server/refs/heads/${BRANCH}/version.php" || true)
+	fi
+	[[ -z "$VERSION_PHP" ]] && die "Could not fetch version.php from nextcloud/server"
+
+	INTERNAL_VERSION=$(echo "$VERSION_PHP" | grep -oP '\$OC_Version\s*=\s*\[\K[0-9, ]+' | tr -d ' ' | tr ',' '.')
+	[[ -z "$INTERNAL_VERSION" ]] && die "Could not parse OC_Version from version.php"
+
+	info "Internal version: ${INTERNAL_VERSION}"
 fi
-[[ -z "$VERSION_PHP" ]] && die "Could not fetch version.php from nextcloud/server"
-
-INTERNAL_VERSION=$(echo "$VERSION_PHP" | grep -oP '\$OC_Version\s*=\s*\[\K[0-9, ]+' | tr -d ' ' | tr ',' '.')
-[[ -z "$INTERNAL_VERSION" ]] && die "Could not parse OC_Version from version.php"
-
-info "Internal version: ${INTERNAL_VERSION}"
 
 # ─── Fetch minPHP (needed for new major entries) ─────────────────────────────
 
