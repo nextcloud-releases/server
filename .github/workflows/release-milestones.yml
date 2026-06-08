@@ -32,8 +32,13 @@ on:
         required: false
         type: boolean
         default: false
-      due_date:
-        description: 'Due date for new milestones (YYYY-MM-DD, e.g. 2026-07-23). Leave empty to skip.'
+      next_due:
+        description: 'Due date of the next patch release, e.g. 34.0.1 (YYYY-MM-DD). Leave empty to skip.'
+        required: false
+        type: string
+        default: ''
+      upcoming_due:
+        description: 'Due date of the second-to-next patch release, e.g. 34.0.2 (YYYY-MM-DD). Leave empty to skip.'
         required: false
         type: string
         default: ''
@@ -103,8 +108,11 @@ jobs:
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             ARGS+=("--dry-run")
           fi
-          if [[ -n "${{ inputs.due_date }}" ]]; then
-            ARGS+=("--due-date" "${{ inputs.due_date }}")
+          if [[ -n "${{ inputs.next_due }}" ]]; then
+            ARGS+=("--next-due" "${{ inputs.next_due }}")
+          fi
+          if [[ -n "${{ inputs.upcoming_due }}" ]]; then
+            ARGS+=("--upcoming-due" "${{ inputs.upcoming_due }}")
           fi
           bash .github/scripts/update-milestones.sh "${ARGS[@]}"
 

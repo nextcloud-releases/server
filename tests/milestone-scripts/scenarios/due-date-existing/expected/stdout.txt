@@ -7,9 +7,10 @@ Stable release detected (v33.0.4).
 Processing nextcloud/server...
   Set due date of 'Nextcloud 33.0.5' to 2026-07-02T00:00:00Z
   Closed milestone 'Nextcloud 33.0.4' (#10)
-  Created milestone 'Nextcloud 33.0.6'
+  Milestone 'Nextcloud 33.0.6' already exists (#12)
+  Set due date of 'Nextcloud 33.0.6' to 2026-08-27T00:00:00Z
 
 === Summary ===
   Milestones closed: 1
-  Milestones created: 1
+  Milestones created: 0
   Issues moved: 0
