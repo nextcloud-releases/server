@@ -586,6 +586,22 @@ if [[ "$DEPLOY" -ne 100 ]]; then
 	COMMIT_MSG="${COMMIT_MSG} (${DEPLOY}% rollout)"
 fi
 
+# Ensure a git identity exists (CI runners have none by default).
+# Derive it from the token owner (GH_TOKEN == RELEASE_TOKEN) so commits
+# are authored by the bot the token belongs to. Fall back to
+# github-actions[bot] if the token isn't a user token (e.g. github.token).
+if [[ -z "$(git config user.email)" ]]; then
+	BOT_LOGIN=$(gh api user --jq '.login' 2>/dev/null || true)
+	if [[ -n "$BOT_LOGIN" ]]; then
+		BOT_ID=$(gh api user --jq '.id' 2>/dev/null || true)
+		git config user.name "$BOT_LOGIN"
+		git config user.email "${BOT_ID}+${BOT_LOGIN}@users.noreply.github.com"
+	else
+		git config user.name "github-actions[bot]"
+		git config user.email "github-actions[bot]@users.noreply.github.com"
+	fi
+fi
+
 git checkout -b "$BRANCH"
 git add config/ tests/
 git commit --signoff -m "$COMMIT_MSG"
