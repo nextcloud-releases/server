@@ -20,6 +20,9 @@
 
 set -euo pipefail
 
+# Allow tests to inject a mock gh; defaults to the real CLI.
+GH="${GH:-gh}"
+
 # Two modes:
 #  - Stable release (e.g. v33.0.4): close released milestone, create next patch, move open issues
 #  - First beta (e.g. v35.0.0beta1): only create the new major milestone, no close/move
@@ -110,7 +113,7 @@ dry_run_prefix() {
 # Find a milestone by title in a repo, return its number (or empty)
 find_milestone() {
 	local repo="$1" title="$2"
-	gh api "repos/${repo}/milestones?state=all&per_page=100" \
+	"$GH" api "repos/${repo}/milestones?state=all&per_page=100" \
 		--jq ".[] | select(.title == \"${title}\") | .number" 2>/dev/null || true
 }
 
@@ -121,7 +124,7 @@ close_milestone() {
 		echo "  $(dry_run_prefix)Would close milestone '${title}' (#${number})"
 		return 0
 	fi
-	if gh api "repos/${repo}/milestones/${number}" -X PATCH -f state=closed --silent 2>/dev/null; then
+	if "$GH" api "repos/${repo}/milestones/${number}" -X PATCH -f state=closed --silent 2>/dev/null; then
 		echo "  Closed milestone '${title}' (#${number})"
 		return 0
 	else
@@ -141,7 +144,7 @@ create_milestone() {
 	if [[ -n "$due_on" ]]; then
 		args+=(-f "due_on=${due_on}")
 	fi
-	if gh api "repos/${repo}/milestones" -X POST "${args[@]}" --silent 2>/dev/null; then
+	if "$GH" api "repos/${repo}/milestones" -X POST "${args[@]}" --silent 2>/dev/null; then
 		echo "  Created milestone '${title}'"
 		return 0
 	else
@@ -152,37 +155,45 @@ create_milestone() {
 
 # Move all open issues from one milestone to another.
 # Called BEFORE closing the source milestone so no issues get orphaned.
-# Paginates in batches of 100 because repos can have many open issues.
 move_issues() {
-	local repo="$1" from_number="$2" to_number="$3" from_title="$4" to_title="$5"
+	local repo="$1" from_number="$2" to_number="$3" to_title="$4"
 	local moved=0
 	local page=1
 
+	# First collect every open issue number, paginating in batches of 100.
+	# We gather the full list before moving any issue: moving an issue removes
+	# it from the source milestone, which would shift later pages and cause the
+	# page counter to skip issues (and could loop forever if a move failed).
+	local all_issues=""
 	while true; do
 		local issues
-		issues=$(gh api "repos/${repo}/issues?milestone=${from_number}&state=open&per_page=100&page=${page}" \
+		issues=$("$GH" api "repos/${repo}/issues?milestone=${from_number}&state=open&per_page=100&page=${page}" \
 			--jq '.[].number' 2>/dev/null) || break
 
 		if [[ -z "$issues" ]]; then
 			break
 		fi
 
-		while IFS= read -r issue_number; do
-			if $DRY_RUN; then
-				echo "  $(dry_run_prefix)Would move #${issue_number} → '${to_title}'"
-			else
-				if gh api "repos/${repo}/issues/${issue_number}" -X PATCH \
-					-F "milestone=${to_number}" --silent 2>/dev/null; then
-					echo "  Moved #${issue_number} → '${to_title}'"
-				else
-					warn "Failed to move ${repo}#${issue_number}"
-				fi
-			fi
-			moved=$((moved + 1))
-		done <<< "$issues"
-
+		all_issues+="${issues}"$'\n'
 		page=$((page + 1))
 	done
+
+	# Now move each gathered issue. Progress goes to stderr; only the final
+	# count is written to stdout so the caller can capture it via $(move_issues ...).
+	while IFS= read -r issue_number; do
+		[[ -z "$issue_number" ]] && continue
+		if $DRY_RUN; then
+			echo "  $(dry_run_prefix)Would move #${issue_number} → '${to_title}'" >&2
+		else
+			if "$GH" api "repos/${repo}/issues/${issue_number}" -X PATCH \
+				-F "milestone=${to_number}" --silent 2>/dev/null; then
+				echo "  Moved #${issue_number} → '${to_title}'" >&2
+			else
+				warn "Failed to move ${repo}#${issue_number}" >&2
+			fi
+		fi
+		moved=$((moved + 1))
+	done <<< "$all_issues"
 
 	echo "$moved"
 }
@@ -264,7 +275,7 @@ elif ! $IS_PRERELEASE; then
 
 			# Move open issues before closing
 			if [[ -n "$next_number" ]]; then
-				repo_moved=$(move_issues "$repo" "$current_number" "$next_number" "$current_title" "$NEXT_MILESTONE")
+				repo_moved=$(move_issues "$repo" "$current_number" "$next_number" "$NEXT_MILESTONE")
 				TOTAL_MOVED=$((TOTAL_MOVED + repo_moved))
 			fi
 

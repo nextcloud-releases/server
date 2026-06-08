@@ -22,6 +22,9 @@
 
 set -euo pipefail
 
+# Allow tests to inject a mock gh; defaults to the real CLI.
+GH="${GH:-gh}"
+
 CONFIG="${1:?Usage: audit-milestones.sh <config.json> <tag-only.json>}"
 TAG_ONLY="${2:?Missing tag-only.json path}"
 
@@ -29,7 +32,7 @@ TAG_ONLY="${2:?Missing tag-only.json path}"
 CONFIG_BASENAME=$(basename "$CONFIG" .json)
 if [[ "$CONFIG_BASENAME" == "master" ]]; then
 	# For master.json, find the highest major version tag
-	MAJOR=$(gh api repos/nextcloud-releases/server/git/refs/tags \
+	MAJOR=$("$GH" api repos/nextcloud-releases/server/git/refs/tags \
 		--paginate --jq '.[].ref | sub("refs/tags/v"; "")' \
 		| grep -E '^[0-9]+\.' | cut -d. -f1 | sort -n | tail -1)
 	# Next major (the one being developed on master)
@@ -54,7 +57,7 @@ REPOS=$(
 REPO_COUNT=$(echo "$REPOS" | wc -l)
 
 # Find the latest stable release for this major version
-LATEST_STABLE=$(gh api repos/nextcloud-releases/server/git/refs/tags \
+LATEST_STABLE=$("$GH" api repos/nextcloud-releases/server/git/refs/tags \
 	--paginate --jq '.[].ref | sub("refs/tags/"; "")' \
 	| grep -E "^v${MAJOR}\.[0-9]+\.[0-9]+$" | sort -V | tail -1 || true)
 
@@ -109,7 +112,7 @@ while IFS= read -r repo; do
 	repo_issues=()
 
 	# Fetch all open milestones for this repo (only Nextcloud XX ones)
-	all_milestones=$(gh api "repos/${repo}/milestones?state=all&per_page=100" \
+	all_milestones=$("$GH" api "repos/${repo}/milestones?state=all&per_page=100" \
 		--jq '.[] | select(.title | startswith("Nextcloud '"${MAJOR}"'")) | "\(.title)\t\(.state)\t\(.open_issues)\t\(.due_on // "none")"' \
 		2>/dev/null || true)
 
@@ -118,10 +121,8 @@ while IFS= read -r repo; do
 		warn_issue "$repo" "No milestones found for Nextcloud ${MAJOR}"
 	else
 		# Check: released milestone should be closed
-		released_found=false
 		while IFS=$'\t' read -r title state open_issues due_on; do
 			if [[ "$title" == "$RELEASED_MILESTONE" ]] || [[ -n "$RELEASED_MILESTONE_ALT" && "$title" == "$RELEASED_MILESTONE_ALT" ]]; then
-				released_found=true
 				if [[ "$state" == "open" ]]; then
 					repo_issues+=("'${title}' still open (${open_issues} open issues) - should be closed")
 					warn_issue "$repo" "'${title}' still open (${open_issues} open issues) - should be closed"
