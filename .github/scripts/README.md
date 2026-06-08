@@ -108,10 +108,12 @@ bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --
 bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json
 ```
 
-Create next major milestone on first beta (e.g. `v35.0.0beta1` creates `Nextcloud 35`):
+Create the next major milestone on first beta. The first beta of major N opens
+development of N+1, so `v34.0.0beta1` creates `Nextcloud 35` (the `Nextcloud 34`
+milestone already exists from the previous cycle):
 
 ```bash
-bash .github/scripts/update-milestones.sh v35.0.0beta1 master.json tag-only.json
+bash .github/scripts/update-milestones.sh v34.0.0beta1 master.json tag-only.json
 ```
 
 Audit milestone consistency (detects orphans, missing milestones, naming issues):

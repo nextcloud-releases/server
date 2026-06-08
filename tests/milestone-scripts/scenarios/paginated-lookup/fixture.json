@@ -1,0 +1,730 @@
+{
+  "milestones": {
+    "nextcloud/server": [
+      {
+        "number": 1,
+        "title": "Old milestone 1",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 2,
+        "title": "Old milestone 2",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 3,
+        "title": "Old milestone 3",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 4,
+        "title": "Old milestone 4",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 5,
+        "title": "Old milestone 5",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 6,
+        "title": "Old milestone 6",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 7,
+        "title": "Old milestone 7",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 8,
+        "title": "Old milestone 8",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 9,
+        "title": "Old milestone 9",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 10,
+        "title": "Old milestone 10",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 11,
+        "title": "Old milestone 11",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 12,
+        "title": "Old milestone 12",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 13,
+        "title": "Old milestone 13",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 14,
+        "title": "Old milestone 14",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 15,
+        "title": "Old milestone 15",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 16,
+        "title": "Old milestone 16",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 17,
+        "title": "Old milestone 17",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 18,
+        "title": "Old milestone 18",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 19,
+        "title": "Old milestone 19",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 20,
+        "title": "Old milestone 20",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 21,
+        "title": "Old milestone 21",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 22,
+        "title": "Old milestone 22",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 23,
+        "title": "Old milestone 23",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 24,
+        "title": "Old milestone 24",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 25,
+        "title": "Old milestone 25",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 26,
+        "title": "Old milestone 26",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 27,
+        "title": "Old milestone 27",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 28,
+        "title": "Old milestone 28",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 29,
+        "title": "Old milestone 29",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 30,
+        "title": "Old milestone 30",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 31,
+        "title": "Old milestone 31",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 32,
+        "title": "Old milestone 32",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 33,
+        "title": "Old milestone 33",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 34,
+        "title": "Old milestone 34",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 35,
+        "title": "Old milestone 35",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 36,
+        "title": "Old milestone 36",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 37,
+        "title": "Old milestone 37",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 38,
+        "title": "Old milestone 38",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 39,
+        "title": "Old milestone 39",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 40,
+        "title": "Old milestone 40",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 41,
+        "title": "Old milestone 41",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 42,
+        "title": "Old milestone 42",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 43,
+        "title": "Old milestone 43",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 44,
+        "title": "Old milestone 44",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 45,
+        "title": "Old milestone 45",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 46,
+        "title": "Old milestone 46",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 47,
+        "title": "Old milestone 47",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 48,
+        "title": "Old milestone 48",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 49,
+        "title": "Old milestone 49",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 50,
+        "title": "Old milestone 50",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 51,
+        "title": "Old milestone 51",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 52,
+        "title": "Old milestone 52",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 53,
+        "title": "Old milestone 53",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 54,
+        "title": "Old milestone 54",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 55,
+        "title": "Old milestone 55",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 56,
+        "title": "Old milestone 56",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 57,
+        "title": "Old milestone 57",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 58,
+        "title": "Old milestone 58",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 59,
+        "title": "Old milestone 59",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 60,
+        "title": "Old milestone 60",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 61,
+        "title": "Old milestone 61",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 62,
+        "title": "Old milestone 62",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 63,
+        "title": "Old milestone 63",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 64,
+        "title": "Old milestone 64",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 65,
+        "title": "Old milestone 65",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 66,
+        "title": "Old milestone 66",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 67,
+        "title": "Old milestone 67",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 68,
+        "title": "Old milestone 68",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 69,
+        "title": "Old milestone 69",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 70,
+        "title": "Old milestone 70",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 71,
+        "title": "Old milestone 71",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 72,
+        "title": "Old milestone 72",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 73,
+        "title": "Old milestone 73",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 74,
+        "title": "Old milestone 74",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 75,
+        "title": "Old milestone 75",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 76,
+        "title": "Old milestone 76",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 77,
+        "title": "Old milestone 77",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 78,
+        "title": "Old milestone 78",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 79,
+        "title": "Old milestone 79",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 80,
+        "title": "Old milestone 80",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 81,
+        "title": "Old milestone 81",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 82,
+        "title": "Old milestone 82",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 83,
+        "title": "Old milestone 83",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 84,
+        "title": "Old milestone 84",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 85,
+        "title": "Old milestone 85",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 86,
+        "title": "Old milestone 86",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 87,
+        "title": "Old milestone 87",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 88,
+        "title": "Old milestone 88",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 89,
+        "title": "Old milestone 89",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 90,
+        "title": "Old milestone 90",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 91,
+        "title": "Old milestone 91",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 92,
+        "title": "Old milestone 92",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 93,
+        "title": "Old milestone 93",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 94,
+        "title": "Old milestone 94",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 95,
+        "title": "Old milestone 95",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 96,
+        "title": "Old milestone 96",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 97,
+        "title": "Old milestone 97",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 98,
+        "title": "Old milestone 98",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 99,
+        "title": "Old milestone 99",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 100,
+        "title": "Old milestone 100",
+        "state": "closed",
+        "open_issues": 0,
+        "due_on": null
+      },
+      {
+        "number": 200,
+        "title": "Nextcloud 34.0.4",
+        "state": "open",
+        "open_issues": 1,
+        "due_on": null
+      },
+      {
+        "number": 201,
+        "title": "Nextcloud 34.0.5",
+        "state": "open",
+        "open_issues": 0,
+        "due_on": null
+      }
+    ]
+  },
+  "issues": {
+    "nextcloud/server": [
+      {
+        "number": 500,
+        "milestone": 200,
+        "state": "open"
+      }
+    ]
+  },
+  "tags": []
+}

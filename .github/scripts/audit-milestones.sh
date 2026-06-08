@@ -111,8 +111,9 @@ while IFS= read -r repo; do
 	echo "Checking ${repo}..."
 	repo_issues=()
 
-	# Fetch all open milestones for this repo (only Nextcloud XX ones)
-	all_milestones=$("$GH" api "repos/${repo}/milestones?state=all&per_page=100" \
+	# Fetch all milestones for this repo (only Nextcloud XX ones).
+	# --paginate: busy repos have >100 milestones spanning several pages.
+	all_milestones=$("$GH" api "repos/${repo}/milestones?state=all&per_page=100" --paginate \
 		--jq '.[] | select(.title | startswith("Nextcloud '"${MAJOR}"'")) | "\(.title)\t\(.state)\t\(.open_issues)\t\(.due_on // "none")"' \
 		2>/dev/null || true)
 
