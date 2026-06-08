@@ -605,6 +605,10 @@ fi
 git checkout -b "$BRANCH"
 git add config/ tests/
 git commit --signoff -m "$COMMIT_MSG"
+
+# Route git's github.com auth through gh (GH_TOKEN == RELEASE_TOKEN);
+# the gh-cloned remote has no push credentials on its own.
+gh auth setup-git
 git push -u origin "$BRANCH"
 
 BODY="Automated PR from the release pipeline.
