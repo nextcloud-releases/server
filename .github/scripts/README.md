@@ -59,6 +59,8 @@ bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
 | `generate-metadata.sh` | Generate migration metadata (NC30+) |
 | `package.sh` | Set permissions, create tar.bz2 + zip, generate checksums |
 | `update-updater-server.sh` | Create a PR to the updater server with release config and tests |
+| `update-milestones.sh` | Close/create milestones and move issues across all release repos |
+| `audit-milestones.sh` | Check milestone consistency: orphans, missing milestones, naming issues |
 
 ## Updater server
 
@@ -85,6 +87,43 @@ bash .github/scripts/update-updater-server.sh v33.0.6 "$BZ2_SIG" "$ZIP_SIG" --re
 **Deploy percentage** is auto-calculated: `.0.0` = 30%, `.0.1` = 70%, `.0.2`+ = 100%. Override with `--deploy N` if needed.
 
 The workflow (`release-updater.yml`) can also be triggered manually from the Actions UI with a dry-run option for testing.
+
+## Milestone management
+
+Update milestones after a stable release. For `v33.0.4` this will:
+
+1. Close `Nextcloud 33.0.4` across all repos
+2. Move open issues to `Nextcloud 33.0.5` (should already exist from previous release)
+3. Create `Nextcloud 33.0.6` so two open patch milestones always exist (33.0.5 + 33.0.6)
+
+```bash
+# Dry run first
+bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --dry-run
+
+# Apply with due date - the date is set on all newly created milestones
+# (both 33.0.5 if it was missing, and 33.0.6)
+bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --due-date 2026-07-23
+
+# Apply without due date (can be set later manually)
+bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json
+```
+
+Create next major milestone on first beta (e.g. `v35.0.0beta1` creates `Nextcloud 35`):
+
+```bash
+bash .github/scripts/update-milestones.sh v35.0.0beta1 master.json tag-only.json
+```
+
+Audit milestone consistency (detects orphans, missing milestones, naming issues):
+
+```bash
+bash .github/scripts/audit-milestones.sh stable33.json tag-only.json
+```
+
+The audit determines expected state from the latest stable release tags on
+`nextcloud-releases/server`. It exits with code 1 if issues are found.
+
+Both scripts require `gh` CLI authenticated with a token that has repo access to all Nextcloud repositories.
 
 ## Notes
 

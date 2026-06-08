@@ -1,0 +1,121 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+# Updates GitHub milestones across all release repos.
+# Two modes:
+#   - Stable releases: close the current milestone, create the next patch
+#     milestone, and move open issues forward.
+#   - First betas (e.g. v35.0.0beta1): create the new major milestone.
+# Can be triggered manually with dry-run or automatically from the release
+# pipeline (release.yml).
+# An audit step runs after every update to verify consistency.
+# Use audit_only to run just the audit without making changes.
+
+name: Update milestones on release
+run-name: "Milestones for ${{ inputs.tag }}"
+
+on:
+  # Called from release.yml as part of the release pipeline
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  # Allows manual triggering from the Actions tab
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v33.0.4 or v35.0.0beta1)'
+        required: true
+      dry_run:
+        description: 'Preview changes without applying them'
+        required: false
+        type: boolean
+        default: false
+      due_date:
+        description: 'Due date for new milestones (YYYY-MM-DD, e.g. 2026-07-23). Leave empty to skip.'
+        required: false
+        type: string
+        default: ''
+      audit_only:
+        description: 'Only run the audit, skip milestone updates'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Prevent duplicate runs for the same tag (e.g. manual re-trigger while
+# the pipeline-invoked run is still in progress)
+concurrency:
+  group: release-milestones-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  milestones:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Check actor permission
+        uses: skjnldsv/check-actor-permission@69e92a3c4711150929bca9fcf34448c5bf5526e7 # v3.0
+        with:
+          require: write
+
+      - name: Checkout config
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      # Alpha/beta releases use master.json (they branch from master).
+      # Stable releases use stableXX.json matching their major version.
+      - name: Determine config file
+        id: config
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          MAJOR=$(echo "$TAG" | sed 's/^v//' | cut -d. -f1)
+
+          if [[ "$TAG" =~ \.0\.0(alpha|beta) ]]; then
+            CONFIG="master.json"
+          else
+            CONFIG="stable${MAJOR}.json"
+          fi
+
+          if [[ ! -f "$CONFIG" ]]; then
+            echo "::error::Config file $CONFIG not found"
+            exit 1
+          fi
+
+          echo "config=$CONFIG" >> "$GITHUB_OUTPUT"
+
+      - name: Update milestones
+        if: inputs.audit_only != true
+        env:
+          # RELEASE_TOKEN is needed to manage milestones across org repos;
+          # GITHUB_TOKEN is scoped to this repo only and used as fallback.
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          ARGS=("${{ env.RELEASE_TAG }}" "${{ steps.config.outputs.config }}" "tag-only.json")
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            ARGS+=("--dry-run")
+          fi
+          if [[ -n "${{ inputs.due_date }}" ]]; then
+            ARGS+=("--due-date" "${{ inputs.due_date }}")
+          fi
+          bash .github/scripts/update-milestones.sh "${ARGS[@]}"
+
+      # Audit runs after every update (and on audit_only) to verify
+      # milestone consistency: orphans, missing milestones, naming issues.
+      # Non-blocking on dry-run to avoid failing the pipeline on pre-existing issues.
+      - name: Audit milestones
+        if: inputs.dry_run != true
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          bash .github/scripts/audit-milestones.sh \
+            "${{ steps.config.outputs.config }}" \
+            "tag-only.json" || true

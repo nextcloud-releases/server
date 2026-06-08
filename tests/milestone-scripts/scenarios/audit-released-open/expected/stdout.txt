@@ -1,0 +1,13 @@
+=== Milestone audit for Nextcloud 33 ===
+  Latest stable release: v33.0.4
+  Expected closed: Nextcloud 33.0.4
+  Expected open:   Nextcloud 33.0.5, Nextcloud 33.0.6
+  Repos to check:  1
+
+Checking nextcloud/server...
+::warning::nextcloud/server: 'Nextcloud 33.0.4' still open (1 open issues) - should be closed
+::warning::nextcloud/server: Orphan: 'Nextcloud 33.0.4' still open (1 open issues) - version already released
+
+=== Audit summary ===
+  OK: 0 repos
+  Issues: 1 repos

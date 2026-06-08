@@ -1,0 +1,15 @@
+Stable release detected (v34.0.0).
+  Close: Nextcloud 34.0.0 Nextcloud 34
+  Move issues to: Nextcloud 34.0.1
+  Create: Nextcloud 34.0.2
+  Repos: 1
+
+Processing nextcloud/server...
+  Created milestone 'Nextcloud 34.0.1'
+  Closed milestone 'Nextcloud 34' (#20)
+  Created milestone 'Nextcloud 34.0.2'
+
+=== Summary ===
+  Milestones closed: 1
+  Milestones created: 2
+  Issues moved: 0

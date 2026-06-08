@@ -42,3 +42,18 @@ jobs:
     with:
       tag: ${{ inputs.tag }}
     secrets: inherit
+
+  # Runs after tagging completes. Only for stable releases and first betas.
+  # Runs in parallel with changelog and build.
+  milestones:
+    needs: tag
+    if: >-
+      startsWith(inputs.tag, 'v')
+      && (
+        (!contains(inputs.tag, 'alpha') && !contains(inputs.tag, 'beta') && !contains(inputs.tag, 'rc'))
+        || endsWith(inputs.tag, 'beta1')
+      )
+    uses: ./.github/workflows/release-milestones.yml
+    with:
+      tag: ${{ inputs.tag }}
+    secrets: inherit
