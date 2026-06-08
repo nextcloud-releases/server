@@ -61,6 +61,7 @@ shift
 ENDPOINT=""
 METHOD="GET"
 JQ=""
+PAGINATE=false
 declare -A FIELDS=()
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -68,7 +69,7 @@ while [[ $# -gt 0 ]]; do
 		--jq)       JQ="$2"; shift 2 ;;
 		-f|-F)      FIELDS["${2%%=*}"]="${2#*=}"; shift 2 ;;
 		--silent)   shift ;;
-		--paginate) shift ;;
+		--paginate) PAGINATE=true; shift ;;
 		-*)         echo "fake-gh: unknown flag: $1" >&2; exit 1 ;;
 		*)          ENDPOINT="$1"; shift ;;
 	esac
@@ -121,10 +122,15 @@ if [[ "$METHOD" == "POST" && "$PATH_ONLY" =~ ^repos/(.+)/milestones$ ]]; then
 	exit 0
 fi
 
-# List milestones for a repo.
+# List milestones for a repo. Like the real API, a single page returns at most
+# 100 entries; only --paginate walks past the first page.
 if [[ "$METHOD" == "GET" && "$PATH_ONLY" =~ ^repos/(.+)/milestones$ ]]; then
 	repo="${BASH_REMATCH[1]}"
-	jq -c --arg r "$repo" '.milestones[$r] // []' "$STATE" | emit
+	if [[ "$PAGINATE" == true ]]; then
+		jq -c --arg r "$repo" '.milestones[$r] // []' "$STATE" | emit
+	else
+		jq -c --arg r "$repo" '(.milestones[$r] // [])[0:100]' "$STATE" | emit
+	fi
 	exit 0
 fi
 

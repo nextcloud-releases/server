@@ -113,7 +113,9 @@ dry_run_prefix() {
 # Find a milestone by title in a repo, return its number (or empty)
 find_milestone() {
 	local repo="$1" title="$2"
-	"$GH" api "repos/${repo}/milestones?state=all&per_page=100" \
+	# --paginate: busy repos (e.g. nextcloud/server) have >100 milestones, so the
+	# target can be on a later page; without it the lookup silently misses them.
+	"$GH" api "repos/${repo}/milestones?state=all&per_page=100" --paginate \
 		--jq ".[] | select(.title == \"${title}\") | .number" 2>/dev/null || true
 }
 
