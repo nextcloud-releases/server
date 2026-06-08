@@ -9,12 +9,17 @@
 #   update-milestones.sh <tag> <config.json> <tag-only.json> [options]
 #
 # Options:
-#   --dry-run              Preview changes without applying them
-#   --due-date YYYY-MM-DD  Set due date on newly created milestones
+#   --dry-run                 Preview changes without applying them
+#   --next-due YYYY-MM-DD      Due date for the next patch milestone (e.g. 34.0.1)
+#   --upcoming-due YYYY-MM-DD  Due date for the second-to-next patch (e.g. 34.0.2)
+#
+# A run keeps two open patch milestones (next + upcoming); --next-due and
+# --upcoming-due set their due dates. The date is applied whether the milestone
+# is created by this run or already exists, so re-running corrects stale dates.
 #
 # Examples:
 #   update-milestones.sh v33.0.4 stable33.json tag-only.json
-#   update-milestones.sh v33.0.4 stable33.json tag-only.json --due-date 2026-07-23
+#   update-milestones.sh v33.0.4 stable33.json tag-only.json --next-due 2026-07-02 --upcoming-due 2026-08-27
 #   update-milestones.sh v35.0.0beta1 master.json tag-only.json
 #   update-milestones.sh v33.0.4 stable33.json tag-only.json --dry-run
 
@@ -33,25 +38,35 @@ TAG_ONLY="${3:?Missing tag-only.json path}"
 shift 3
 
 DRY_RUN=false
-DUE_DATE=""
+NEXT_DUE_DATE=""
+UPCOMING_DUE_DATE=""
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--dry-run)  DRY_RUN=true ;;
-		--due-date) DUE_DATE="${2:?--due-date requires a YYYY-MM-DD value}"; shift ;;
-		*)          echo "Unknown option: $1"; exit 1 ;;
+		--dry-run)      DRY_RUN=true ;;
+		--next-due)     NEXT_DUE_DATE="${2:?--next-due requires a YYYY-MM-DD value}"; shift ;;
+		--upcoming-due) UPCOMING_DUE_DATE="${2:?--upcoming-due requires a YYYY-MM-DD value}"; shift ;;
+		*)              echo "Unknown option: $1"; exit 1 ;;
 	esac
 	shift
 done
 
-# Convert due date to ISO 8601 format expected by the GitHub API
-DUE_ON=""
-if [[ -n "$DUE_DATE" ]]; then
-	if [[ ! "$DUE_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
-		echo "::error::Invalid date format '${DUE_DATE}', expected YYYY-MM-DD"
+# Validate YYYY-MM-DD format (empty is allowed). Runs in the main shell so an
+# invalid date aborts the script immediately.
+validate_date() {
+	local date="$1" label="$2"
+	if [[ -n "$date" && ! "$date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+		echo "::error::Invalid ${label} '${date}', expected YYYY-MM-DD"
 		exit 1
 	fi
-	DUE_ON="${DUE_DATE}T00:00:00Z"
-fi
+}
+validate_date "$NEXT_DUE_DATE" "--next-due"
+validate_date "$UPCOMING_DUE_DATE" "--upcoming-due"
+
+# Convert to the ISO 8601 form the GitHub API expects (empty stays empty).
+NEXT_DUE_ON=""
+UPCOMING_DUE_ON=""
+[[ -n "$NEXT_DUE_DATE" ]] && NEXT_DUE_ON="${NEXT_DUE_DATE}T00:00:00Z"
+[[ -n "$UPCOMING_DUE_DATE" ]] && UPCOMING_DUE_ON="${UPCOMING_DUE_DATE}T00:00:00Z"
 
 # VERSION: full semver without leading "v"; MAJOR/MINOR: numeric components
 # PATCH: third component with pre-release suffixes (alpha/beta/rc…) stripped
@@ -155,6 +170,24 @@ create_milestone() {
 	fi
 }
 
+# Set (or correct) the due date of an existing milestone. No-op when no date
+# is given, so callers can pass an empty value unconditionally.
+set_due() {
+	local repo="$1" number="$2" title="$3" due_on="$4"
+	[[ -z "$due_on" ]] && return 0
+	if $DRY_RUN; then
+		echo "  $(dry_run_prefix)Would set due date of '${title}' (#${number}) to ${due_on}"
+		return 0
+	fi
+	if "$GH" api "repos/${repo}/milestones/${number}" -X PATCH -f "due_on=${due_on}" --silent 2>/dev/null; then
+		echo "  Set due date of '${title}' to ${due_on}"
+		return 0
+	else
+		warn "Failed to set due date of '${title}' in ${repo}"
+		return 1
+	fi
+}
+
 # Move all open issues from one milestone to another.
 # Called BEFORE closing the source milestone so no issues get orphaned.
 move_issues() {
@@ -215,7 +248,8 @@ if $IS_FIRST_BETA; then
 		existing=$(find_milestone "$repo" "$NEXT_MAJOR_MILESTONE")
 		repo_created="-"
 		if [[ -z "$existing" ]]; then
-			create_milestone "$repo" "$NEXT_MAJOR_MILESTONE" "$DUE_ON"
+			# Major milestones don't take a patch due date.
+			create_milestone "$repo" "$NEXT_MAJOR_MILESTONE" ""
 			repo_created="$NEXT_MAJOR_MILESTONE"
 			TOTAL_CREATED=$((TOTAL_CREATED + 1))
 		else
@@ -245,8 +279,8 @@ elif ! $IS_PRERELEASE; then
 
 	echo "Stable release detected (${TAG})."
 	echo "  Close: ${CURRENT_MILESTONES[*]}"
-	echo "  Move issues to: ${NEXT_MILESTONE}"
-	echo "  Create: ${UPCOMING_MILESTONE}${DUE_ON:+ (due: ${DUE_DATE})}"
+	echo "  Move issues to: ${NEXT_MILESTONE}${NEXT_DUE_ON:+ (due: ${NEXT_DUE_DATE})}"
+	echo "  Create: ${UPCOMING_MILESTONE}${UPCOMING_DUE_ON:+ (due: ${UPCOMING_DUE_DATE})}"
 	echo "  Repos: ${REPO_COUNT}"
 	echo ""
 
@@ -269,13 +303,16 @@ elif ! $IS_PRERELEASE; then
 
 		if [[ -n "$current_number" ]]; then
 			# Ensure the next milestone exists (should already from previous release,
-			# but create it if missing so issue moves don't fail)
+			# but create it if missing so issue moves don't fail). Either way,
+			# set its due date to --next-due if one was given.
 			next_number=$(find_milestone "$repo" "$NEXT_MILESTONE")
 			if [[ -z "$next_number" ]]; then
-				create_milestone "$repo" "$NEXT_MILESTONE"
+				create_milestone "$repo" "$NEXT_MILESTONE" "$NEXT_DUE_ON"
 				next_number=$(find_milestone "$repo" "$NEXT_MILESTONE")
 				repo_created="$NEXT_MILESTONE"
 				TOTAL_CREATED=$((TOTAL_CREATED + 1))
+			else
+				set_due "$repo" "$next_number" "$NEXT_MILESTONE" "$NEXT_DUE_ON"
 			fi
 
 			# Move open issues before closing
@@ -293,7 +330,7 @@ elif ! $IS_PRERELEASE; then
 			# two open patch milestones: the next release and the one after
 			upcoming_number=$(find_milestone "$repo" "$UPCOMING_MILESTONE")
 			if [[ -z "$upcoming_number" ]]; then
-				create_milestone "$repo" "$UPCOMING_MILESTONE" "$DUE_ON"
+				create_milestone "$repo" "$UPCOMING_MILESTONE" "$UPCOMING_DUE_ON"
 				if [[ "$repo_created" == "-" ]]; then
 					repo_created="$UPCOMING_MILESTONE"
 				else
@@ -302,6 +339,7 @@ elif ! $IS_PRERELEASE; then
 				TOTAL_CREATED=$((TOTAL_CREATED + 1))
 			else
 				echo "  Milestone '${UPCOMING_MILESTONE}' already exists (#${upcoming_number})"
+				set_due "$repo" "$upcoming_number" "$UPCOMING_MILESTONE" "$UPCOMING_DUE_ON"
 			fi
 		else
 			echo "  No milestone found for ${CURRENT_MILESTONES[*]}, skipping"

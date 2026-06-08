@@ -94,15 +94,21 @@ if [[ "$PATH_ONLY" == "repos/nextcloud-releases/server/git/refs/tags" ]]; then
 	exit 0
 fi
 
-# Close / update a milestone.
+# Close / update a milestone. A PATCH may set state and/or due_on.
 if [[ "$METHOD" == "PATCH" && "$PATH_ONLY" =~ ^repos/(.+)/milestones/([0-9]+)$ ]]; then
 	repo="${BASH_REMATCH[1]}"
 	number="${BASH_REMATCH[2]}"
 	state="${FIELDS[state]:-}"
-	write_state --arg r "$repo" --argjson n "$number" --arg s "$state" \
-		'(.milestones[$r][]? | select(.number == $n) | .state) = $s'
-	if [[ "$state" == "closed" ]]; then
-		printf 'close\t%s\t%s\n' "$repo" "$number" >> "$JOURNAL"
+	due="${FIELDS[due_on]:-}"
+	if [[ -n "$state" ]]; then
+		write_state --arg r "$repo" --argjson n "$number" --arg s "$state" \
+			'(.milestones[$r][]? | select(.number == $n) | .state) = $s'
+		[[ "$state" == "closed" ]] && printf 'close\t%s\t%s\n' "$repo" "$number" >> "$JOURNAL"
+	fi
+	if [[ -n "$due" ]]; then
+		write_state --arg r "$repo" --argjson n "$number" --arg d "$due" \
+			'(.milestones[$r][]? | select(.number == $n) | .due_on) = $d'
+		printf 'setdue\t%s\t%s\t%s\n' "$repo" "$number" "$due" >> "$JOURNAL"
 	fi
 	exit 0
 fi

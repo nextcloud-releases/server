@@ -50,13 +50,18 @@ assert_rc "unknown flag exits 1" 1 "$RC"
 assert_contains "unknown flag reports the option" "Unknown option: --bogus" "$OUT"
 
 echo "--- due-date parsing ---"
-run v33.0.4 "$CONFIGS/stable33.json" "$CONFIGS/tag-only.json" --due-date 2026/07/23
-assert_rc "bad due-date format exits 1" 1 "$RC"
-assert_contains "bad due-date reports error" "Invalid date format" "$OUT"
+run v33.0.4 "$CONFIGS/stable33.json" "$CONFIGS/tag-only.json" --next-due 2026/07/23
+assert_rc "bad --next-due format exits 1" 1 "$RC"
+assert_contains "bad --next-due reports error" "Invalid --next-due" "$OUT"
 
-run v33.0.4 "$CONFIGS/stable33.json" "$CONFIGS/tag-only.json" --due-date 2026-07-23
-assert_rc "valid due-date succeeds" 0 "$RC"
-assert_contains "valid due-date echoed back" "(due: 2026-07-23)" "$OUT"
+run v33.0.4 "$CONFIGS/stable33.json" "$CONFIGS/tag-only.json" --upcoming-due 2026/08/27
+assert_rc "bad --upcoming-due format exits 1" 1 "$RC"
+assert_contains "bad --upcoming-due reports error" "Invalid --upcoming-due" "$OUT"
+
+run v33.0.4 "$CONFIGS/stable33.json" "$CONFIGS/tag-only.json" --next-due 2026-07-02 --upcoming-due 2026-08-27
+assert_rc "valid due dates succeed" 0 "$RC"
+assert_contains "next due echoed back" "Move issues to: Nextcloud 33.0.5 (due: 2026-07-02)" "$OUT"
+assert_contains "upcoming due echoed back" "Create: Nextcloud 33.0.6 (due: 2026-08-27)" "$OUT"
 
 echo "--- release-type routing ---"
 run v35.0.0beta1 "$CONFIGS/stable33.json" "$CONFIGS/tag-only.json"
