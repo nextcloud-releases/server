@@ -1,7 +1,7 @@
 {
   "milestones": {
     "nextcloud/server": [
-      {"number":30,"title":"Nextcloud 35","state":"open","open_issues":0,"due_on":null}
+      {"number":30,"title":"Nextcloud 36","state":"open","open_issues":0,"due_on":null}
     ]
   },
   "issues": { "nextcloud/server": [] },

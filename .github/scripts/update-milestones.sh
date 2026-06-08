@@ -203,8 +203,11 @@ move_issues() {
 # --- Main logic ---
 
 if $IS_FIRST_BETA; then
-	# First beta: only create next major milestone
-	NEXT_MAJOR_MILESTONE="Nextcloud ${MAJOR}"
+	# First beta of major N opens development of the NEXT major (N+1).
+	# The "Nextcloud N" milestone already exists from the previous cycle's first
+	# beta, so here we create "Nextcloud N+1" (e.g. v34.0.0beta1 -> Nextcloud 35).
+	NEXT_MAJOR=$((MAJOR + 1))
+	NEXT_MAJOR_MILESTONE="Nextcloud ${NEXT_MAJOR}"
 	echo "First beta detected (${TAG}). Creating milestone '${NEXT_MAJOR_MILESTONE}' across ${REPO_COUNT} repos."
 
 	while IFS= read -r repo; do
