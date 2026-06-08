@@ -287,13 +287,13 @@ NEW_ENTRY=$(jq -n \
 	 | if $deploy != 100 then . + { deploy: $deploy } else . end')
 
 if [[ -n "$OLD_KEY" ]]; then
-	# Replace old entry with new one
-	jq --arg old "$OLD_KEY" --arg new "$VERSION_STRING" --argjson entry "$NEW_ENTRY" \
+	# Replace old entry with new one (--tab: the repo indents JSON with tabs)
+	jq --tab --arg old "$OLD_KEY" --arg new "$VERSION_STRING" --argjson entry "$NEW_ENTRY" \
 		'del(.[$old]) | . + {($new): $entry}' \
 		"$RELEASES_JSON" > "${RELEASES_JSON}.tmp"
 else
 	# Add new entry (first prerelease)
-	jq --arg new "$VERSION_STRING" --argjson entry "$NEW_ENTRY" \
+	jq --tab --arg new "$VERSION_STRING" --argjson entry "$NEW_ENTRY" \
 		'. + {($new): $entry}' \
 		"$RELEASES_JSON" > "${RELEASES_JSON}.tmp"
 fi
@@ -307,7 +307,7 @@ if [[ "$RELEASE_TYPE" == "first_prerelease" ]]; then
 	if [[ "$EXISTING_MAJOR" != "true" ]]; then
 		MIN_PHP=$(fetch_min_php)
 		info "Adding major ${MAJOR} to major_versions.json (minPHP: ${MIN_PHP})"
-		jq --arg m "$MAJOR" --arg php "$MIN_PHP" \
+		jq --tab --arg m "$MAJOR" --arg php "$MIN_PHP" \
 			'{($m): {minPHP: $php}} + .' \
 			"$MAJOR_VERSIONS_JSON" > "${MAJOR_VERSIONS_JSON}.tmp"
 		mv "${MAJOR_VERSIONS_JSON}.tmp" "$MAJOR_VERSIONS_JSON"
