@@ -467,9 +467,12 @@ ${NEW_SIG_BLOCK}
 SCENARIO
 
 	# Update latest.feature
-	# Find current latest stable version and replace
+	# Find current latest stable version and replace.
+	# head -1: latest.feature may hold several "latest stable" scenarios
+	# (e.g. a PHP-version-pinned one); only the first is the primary entry.
+	# Without it the var goes multiline and breaks the sed below.
 	CURRENT_LATEST_STABLE=$(grep -A4 'latest stable release' "$LATEST_FEATURE" \
-		| grep 'Version "' | grep -oP 'Version "\K[^"]+')
+		| grep 'Version "' | grep -oP 'Version "\K[^"]+' | head -1)
 	CURRENT_LATEST_STABLE_URL=$(echo "$CURRENT_LATEST_STABLE" | sed 's/ //g' | tr '[:upper:]' '[:lower:]')
 
 	if [[ -n "$CURRENT_LATEST_STABLE" ]]; then
@@ -541,8 +544,9 @@ ${NEW_SIG_BLOCK}
 SCENARIO
 
 	# Update latest.feature — beta now points to this pre-release
+	# head -1: see CURRENT_LATEST_STABLE note — guard against multiline.
 	CURRENT_LATEST_BETA=$(grep -A4 'latest beta release' "$LATEST_FEATURE" \
-		| grep 'Version "' | grep -oP 'Version "\K[^"]+')
+		| grep 'Version "' | grep -oP 'Version "\K[^"]+' | head -1)
 	CURRENT_LATEST_BETA_URL=$(echo "$CURRENT_LATEST_BETA" | sed 's/ //g' | tr '[:upper:]' '[:lower:]')
 
 	if [[ -n "$CURRENT_LATEST_BETA" ]]; then
