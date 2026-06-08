@@ -28,7 +28,7 @@ on:
         description: 'Release tag (e.g., v33.0.4 or v35.0.0beta1)'
         required: true
       dry_run:
-        description: 'Preview changes without applying them'
+        description: 'Dry run: log the close/create/move this tag would do, change nothing (audit is skipped)'
         required: false
         type: boolean
         default: false
@@ -38,7 +38,7 @@ on:
         type: string
         default: ''
       audit_only:
-        description: 'Only run the audit, skip milestone updates'
+        description: 'Audit only: skip the update, just report milestone inconsistencies (orphans, missing, no due date)'
         required: false
         type: boolean
         default: false
