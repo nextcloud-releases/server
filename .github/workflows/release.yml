@@ -34,3 +34,11 @@ jobs:
     with:
       tag: ${{ inputs.tag }}
     secrets: inherit
+
+  updater:
+    needs: build
+    if: startsWith(inputs.tag, 'v')
+    uses: ./.github/workflows/release-updater.yml
+    with:
+      tag: ${{ inputs.tag }}
+    secrets: inherit

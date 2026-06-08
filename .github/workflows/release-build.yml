@@ -445,6 +445,39 @@ jobs:
             /tmp/nextcloud "${{ needs.init.outputs.version }}" "$GITHUB_WORKSPACE/releases"
           rm -rf _config
 
+      - name: Sign archives for updater server
+        env:
+          SIGN_KEY: ${{ secrets.SIGN_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SIGN_KEY" ]; then
+            echo "::warning::SIGN_PRIVATE_KEY not set, skipping archive signing"
+            exit 0
+          fi
+          echo "$SIGN_KEY" > /tmp/signing-key.pem
+          VERSION="${{ needs.init.outputs.version }}"
+          for ext in tar.bz2 zip; do
+            archive="$GITHUB_WORKSPACE/releases/nextcloud-${VERSION}.${ext}"
+            [ -f "$archive" ] || continue
+            sig=$(openssl dgst -sha512 -sign /tmp/signing-key.pem "$archive" | openssl base64 | tr -d '\n')
+            echo "$sig" > "${archive}.sig"
+            echo "::notice::Signed ${ext} archive (${#sig} chars)"
+          done
+          rm -f /tmp/signing-key.pem
+
+      # TODO: enable once the old release script is retired
+      # Currently the old release script uploads .sig files to the release.
+      # - name: Attach signatures to GitHub release
+      #   env:
+      #     GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+      #   run: |
+      #     TAG="${{ needs.init.outputs.tag }}"
+      #     VERSION="${{ needs.init.outputs.version }}"
+      #     for sig in releases/nextcloud-${VERSION}.*.sig; do
+      #       [ -f "$sig" ] || continue
+      #       gh release upload "$TAG" "$sig" --clobber 2>/dev/null \
+      #         || echo "::warning::Could not attach $(basename "$sig") to release $TAG"
+      #     done
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

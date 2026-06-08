@@ -58,6 +58,33 @@ bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
 | `sign-release.sh` | Sign core + all apps with occ integrity commands |
 | `generate-metadata.sh` | Generate migration metadata (NC30+) |
 | `package.sh` | Set permissions, create tar.bz2 + zip, generate checksums |
+| `update-updater-server.sh` | Create a PR to the updater server with release config and tests |
+
+## Updater server
+
+After a release is built and signed, `update-updater-server.sh` creates a PR to [`nextcloud-releases/updater_server`](https://github.com/nextcloud-releases/updater_server) with:
+
+- Updated `config/releases.json` (new version, signatures)
+- Regenerated `config/config.php`
+- Updated Behat feature files (version strings, URLs, signatures)
+
+```bash
+# Patch release
+bash .github/scripts/update-updater-server.sh v33.0.6 "$(cat bz2.sig)" "$(cat zip.sig)"
+
+# First stable (auto-deploys at 30%)
+bash .github/scripts/update-updater-server.sh v34.0.0 "$BZ2_SIG" "$ZIP_SIG"
+
+# RC bump (dry-run)
+bash .github/scripts/update-updater-server.sh v34.0.0rc6 "$BZ2_SIG" "$ZIP_SIG" --dry-run
+
+# Use existing checkout instead of cloning
+bash .github/scripts/update-updater-server.sh v33.0.6 "$BZ2_SIG" "$ZIP_SIG" --repo-dir /path/to/updater_server
+```
+
+**Deploy percentage** is auto-calculated: `.0.0` = 30%, `.0.1` = 70%, `.0.2`+ = 100%. Override with `--deploy N` if needed.
+
+The workflow (`release-updater.yml`) can also be triggered manually from the Actions UI with a dry-run option for testing.
 
 ## Notes
 

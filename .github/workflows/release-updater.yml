@@ -1,0 +1,125 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+name: Update updater server
+run-name: "Updater PR ${{ inputs.tag }}"
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      deploy:
+        required: false
+        type: number
+        default: 0
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v34.0.1)'
+        required: true
+      deploy:
+        description: 'Deploy percentage (auto: .0.0=30%, .0.1=70%, else 100%. Set 0 for auto)'
+        type: number
+        default: 0
+      dry_run:
+        description: 'Dry run (show diff, no PR)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-updater-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check actor permission
+        uses: skjnldsv/check-actor-permission@69e92a3c4711150929bca9fcf34448c5bf5526e7 # v3.0
+        with:
+          require: write
+
+      - name: Checkout scripts
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+        with:
+          php-version: '8.2'
+
+      - name: Parse version
+        id: parse
+        run: |
+          TAG="${{ inputs.tag }}"
+          VERSION=$(echo "$TAG" | sed 's/^v//')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download signatures from release
+        id: sigs
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+        run: |
+          TAG="${{ inputs.tag }}"
+          VERSION="${{ steps.parse.outputs.version }}"
+          mkdir -p /tmp/release
+
+          # Download .sig files attached to the GitHub release
+          for ext in tar.bz2 zip; do
+            sigfile="nextcloud-${VERSION}.${ext}.sig"
+            if gh release download "$TAG" \
+              --repo "${{ github.repository }}" \
+              --pattern "$sigfile" \
+              --dir /tmp/release 2>/dev/null; then
+              echo "::notice::Downloaded ${sigfile} from release"
+            else
+              echo "::error::Signature file ${sigfile} not found on release ${TAG}"
+              echo "::error::Run the build workflow first, or attach .sig files manually"
+              exit 1
+            fi
+          done
+
+          BZ2_SIG=$(cat "/tmp/release/nextcloud-${VERSION}.tar.bz2.sig")
+          ZIP_SIG=$(cat "/tmp/release/nextcloud-${VERSION}.zip.sig")
+          echo "bz2=${BZ2_SIG}" >> "$GITHUB_OUTPUT"
+          echo "zip=${ZIP_SIG}" >> "$GITHUB_OUTPUT"
+          echo "::notice::bz2 sig length: ${#BZ2_SIG}, zip sig length: ${#ZIP_SIG}"
+
+      - name: Run update script
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+        run: |
+          ARGS=("${{ inputs.tag }}" "${{ steps.sigs.outputs.bz2 }}" "${{ steps.sigs.outputs.zip }}")
+
+          DEPLOY="${{ inputs.deploy }}"
+          if [ "$DEPLOY" != "0" ] && [ -n "$DEPLOY" ]; then
+            ARGS+=(--deploy "$DEPLOY")
+          fi
+          # deploy=0 or omitted → script auto-calculates from version
+
+          if [ "${{ inputs.dry_run || 'false' }}" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+
+          bash .github/scripts/update-updater-server.sh "${ARGS[@]}"
+
+      - name: Write step summary
+        if: always()
+        run: |
+          VERSION="${{ steps.parse.outputs.version }}"
+          DEPLOY="${{ inputs.deploy }}"
+          DRY="${{ inputs.dry_run || 'false' }}"
+          {
+            echo "## Updater Server Update: ${{ inputs.tag }}"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version | ${VERSION} |"
+            echo "| Deploy | ${DEPLOY}% (0 = auto) |"
+            echo "| Dry run | ${DRY} |"
+          } >> "$GITHUB_STEP_SUMMARY"
