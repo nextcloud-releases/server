@@ -1,0 +1,6 @@
+# Patch release v33.0.4: move open issues to 33.0.5, close 33.0.4, open 33.0.6
+# columns (tab): <action> <repo> <args> -- create: title, due=<date|-> | setdue: #ms, date | move: #issue, #ms | close: #ms
+move	nextcloud/server	100	11
+move	nextcloud/server	101	11
+close	nextcloud/server	10
+create	nextcloud/server	Nextcloud 33.0.6	due=-
