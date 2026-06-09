@@ -1,0 +1,28 @@
+{
+    "scenario": "Patch v33.0.4 when 33.0.5 is missing: create it first, then move/close/open 33.0.6",
+    "journal": [
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 33.0.5",
+            "due": null
+        },
+        {
+            "action": "move",
+            "repo": "nextcloud/server",
+            "issue": 100,
+            "milestone": 11
+        },
+        {
+            "action": "close",
+            "repo": "nextcloud/server",
+            "milestone": 10
+        },
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 33.0.6",
+            "due": null
+        }
+    ]
+}

@@ -1,0 +1,17 @@
+{
+    "scenario": "First beta v35.0.0beta1: open the next major milestone Nextcloud 36 in each repo",
+    "journal": [
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 36",
+            "due": null
+        },
+        {
+            "action": "create",
+            "repo": "nextcloud/activity",
+            "title": "Nextcloud 36",
+            "due": null
+        }
+    ]
+}

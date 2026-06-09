@@ -1,0 +1,39 @@
+{
+    "scenario": "Patch v33.0.4 across two repos",
+    "journal": [
+        {
+            "action": "move",
+            "repo": "nextcloud/server",
+            "issue": 500,
+            "milestone": 11
+        },
+        {
+            "action": "close",
+            "repo": "nextcloud/server",
+            "milestone": 10
+        },
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 33.0.6",
+            "due": null
+        },
+        {
+            "action": "move",
+            "repo": "nextcloud/activity",
+            "issue": 501,
+            "milestone": 21
+        },
+        {
+            "action": "close",
+            "repo": "nextcloud/activity",
+            "milestone": 20
+        },
+        {
+            "action": "create",
+            "repo": "nextcloud/activity",
+            "title": "Nextcloud 33.0.6",
+            "due": null
+        }
+    ]
+}

@@ -1,4 +1,0 @@
-# First beta v35.0.0beta1: open the next major milestone Nextcloud 36 in each repo
-# columns (tab): <action> <repo> <args> -- create: title, due=<date|-> | setdue: #ms, date | move: #issue, #ms | close: #ms
-create	nextcloud/server	Nextcloud 36	due=-
-create	nextcloud/activity	Nextcloud 36	due=-

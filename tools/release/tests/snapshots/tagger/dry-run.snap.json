@@ -1,0 +1,12 @@
+{
+    "scenario": "Tag v34.0.1 in dry-run: reports what it would do, writes nothing",
+    "results": [
+        {
+            "repo": "nextcloud/activity",
+            "status": "OK",
+            "branch": "stable34",
+            "detail": "would create v34.0.1 @ sha-activity"
+        }
+    ],
+    "journal": []
+}

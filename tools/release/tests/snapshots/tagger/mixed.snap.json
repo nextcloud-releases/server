@@ -1,0 +1,49 @@
+{
+    "scenario": "Tag v34.0.1 across a mixed set: new, already-tagged, default-branch fallback, server (immutable), and a repo with no branch",
+    "results": [
+        {
+            "repo": "nextcloud/activity",
+            "status": "OK",
+            "branch": "stable34",
+            "detail": "created v34.0.1"
+        },
+        {
+            "repo": "nextcloud/notes",
+            "status": "SKIPPED",
+            "branch": "stable34",
+            "detail": "already tagged"
+        },
+        {
+            "repo": "nextcloud/photos",
+            "status": "OK",
+            "branch": "main",
+            "detail": "created v34.0.1"
+        },
+        {
+            "repo": "nextcloud/server",
+            "status": "SKIPPED",
+            "branch": "stable34",
+            "detail": "already tagged"
+        },
+        {
+            "repo": "nextcloud/ghost",
+            "status": "FAILED",
+            "branch": null,
+            "detail": "no branch found"
+        }
+    ],
+    "journal": [
+        {
+            "action": "tag",
+            "repo": "nextcloud/activity",
+            "tag": "v34.0.1",
+            "sha": "sha-activity"
+        },
+        {
+            "action": "tag",
+            "repo": "nextcloud/photos",
+            "tag": "v34.0.1",
+            "sha": "sha-photos"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+    "scenario": "Patch v33.0.4 with due dates: set 33.0.5 and 33.0.6 due dates, close 33.0.4",
+    "journal": [
+        {
+            "action": "setdue",
+            "repo": "nextcloud/server",
+            "milestone": 11,
+            "due": "2026-07-02T00:00:00Z"
+        },
+        {
+            "action": "close",
+            "repo": "nextcloud/server",
+            "milestone": 10
+        },
+        {
+            "action": "setdue",
+            "repo": "nextcloud/server",
+            "milestone": 12,
+            "due": "2026-08-27T00:00:00Z"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+    "scenario": "First stable v34.0.0: close the Nextcloud 34 milestone, open 34.0.1 and 34.0.2",
+    "journal": [
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 34.0.1",
+            "due": null
+        },
+        {
+            "action": "close",
+            "repo": "nextcloud/server",
+            "milestone": 20
+        },
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 34.0.2",
+            "due": null
+        }
+    ]
+}

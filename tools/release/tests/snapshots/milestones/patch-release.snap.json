@@ -1,0 +1,28 @@
+{
+    "scenario": "Patch release v33.0.4: move open issues to 33.0.5, close 33.0.4, open 33.0.6",
+    "journal": [
+        {
+            "action": "move",
+            "repo": "nextcloud/server",
+            "issue": 100,
+            "milestone": 11
+        },
+        {
+            "action": "move",
+            "repo": "nextcloud/server",
+            "issue": 101,
+            "milestone": 11
+        },
+        {
+            "action": "close",
+            "repo": "nextcloud/server",
+            "milestone": 10
+        },
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 33.0.6",
+            "due": null
+        }
+    ]
+}
