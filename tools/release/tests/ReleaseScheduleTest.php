@@ -56,29 +56,38 @@ final class ReleaseScheduleTest extends TestCase
         );
     }
 
-    public function testFailsHardWhenAStableDateIsMissing(): void
+    public function testFailsHardWhenTheNextMilestoneIsMissing(): void
     {
-        $s = $this->schedule(['Nextcloud 33.0.5' => '2026-07-02']); // 33.0.6 missing
+        // 33.0.5 (the next, imminent release) is absent; 33.0.6 present.
+        $s = $this->schedule(['Nextcloud 33.0.6' => '2026-08-27']);
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage("'Nextcloud 33.0.6'");
+        $this->expectExceptionMessage("'Nextcloud 33.0.5'");
         $s->resolve(Version::fromTag('v33.0.4'));
     }
 
-    public function testMissingMessageNamesBothMilestones(): void
+    public function testToleratesMissingUpcoming(): void
     {
-        $s = $this->schedule([]);
-        try {
-            $s->resolve(Version::fromTag('v33.0.4'));
-            $this->fail('expected RuntimeException');
-        } catch (\RuntimeException $e) {
-            $this->assertStringContainsString("'Nextcloud 33.0.5'", $e->getMessage());
-            $this->assertStringContainsString("'Nextcloud 33.0.6'", $e->getMessage());
-        }
+        // The milestone after next (33.0.6) may not be scheduled yet: set next,
+        // leave upcoming without a due date, do not fail.
+        $s = $this->schedule(['Nextcloud 33.0.5' => '2026-07-02']);
+        $this->assertSame(
+            ['next' => '2026-07-02T00:00:00Z', 'upcoming' => null],
+            $s->resolve(Version::fromTag('v33.0.4')),
+        );
     }
 
-    public function testAMissingDateCanBeCoveredByAnOverride(): void
+    public function testNextOverrideCoversAnEmptySchedule(): void
     {
-        $s = $this->schedule(['Nextcloud 33.0.5' => '2026-07-02']); // 33.0.6 missing
+        $s = ReleaseSchedule::load(null);
+        $this->assertSame(
+            ['next' => '2026-07-02T00:00:00Z', 'upcoming' => null],
+            $s->resolve(Version::fromTag('v33.0.4'), '2026-07-02'),
+        );
+    }
+
+    public function testUpcomingOverrideIsAppliedWhenGiven(): void
+    {
+        $s = $this->schedule(['Nextcloud 33.0.5' => '2026-07-02']); // 33.0.6 not scheduled
         $this->assertSame(
             ['next' => '2026-07-02T00:00:00Z', 'upcoming' => '2026-08-27T00:00:00Z'],
             $s->resolve(Version::fromTag('v33.0.4'), null, '2026-08-27'),

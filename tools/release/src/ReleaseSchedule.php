@@ -56,9 +56,13 @@ final class ReleaseSchedule
      * release. Explicit overrides win over the schedule. Pre-releases (including
      * first betas) roll no patch milestones, so they need no due dates.
      *
-     * @return array{next: ?string, upcoming: ?string}
-     * @throws \RuntimeException when a stable release has a milestone with no
-     *                           override and no schedule entry
+     * The next milestone (the imminent release) is required: a missing date
+     * fails hard. The milestone after that may not be scheduled yet, so it is
+     * set only when listed and left without a due date otherwise.
+     *
+     * @return array{next: string, upcoming: ?string}|array{next: null, upcoming: null}
+     * @throws \RuntimeException when the next milestone has no override and no
+     *                           schedule entry
      */
     public function resolve(Version $version, ?string $nextOverride = null, ?string $upcomingOverride = null): array
     {
@@ -66,28 +70,23 @@ final class ReleaseSchedule
             return ['next' => null, 'upcoming' => null];
         }
 
-        $missing = [];
-        $next = $this->pick(MilestonePlan::nextMilestone($version), $nextOverride, $missing);
-        $upcoming = $this->pick(MilestonePlan::upcomingMilestone($version), $upcomingOverride, $missing);
-
-        if ($missing !== []) {
+        $nextTitle = MilestonePlan::nextMilestone($version);
+        $next = $this->lookup($nextTitle, $nextOverride);
+        if ($next === null) {
             throw new \RuntimeException(
-                'No due date for ' . implode(' and ', $missing)
-                . '. Add it to the release schedule (release-schedule.json) or pass it explicitly.',
+                "No due date for '{$nextTitle}'. Add it to the release schedule (release-schedule.json) or pass it explicitly.",
             );
         }
+
+        $upcoming = $this->lookup(MilestonePlan::upcomingMilestone($version), $upcomingOverride);
 
         return ['next' => $next, 'upcoming' => $upcoming];
     }
 
-    /** @param list<string> $missing collects unresolved titles */
-    private function pick(string $title, ?string $override, array &$missing): ?string
+    /** ISO due date from an override or the schedule, or null when neither has it. */
+    private function lookup(string $title, ?string $override): ?string
     {
         $raw = $override ?? ($this->byTitle[$title] ?? null);
-        if ($raw === null) {
-            $missing[] = "'{$title}'";
-            return null;
-        }
-        return DueDate::toIso($raw);
+        return $raw !== null ? DueDate::toIso($raw) : null;
     }
 }

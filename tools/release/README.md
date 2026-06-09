@@ -73,11 +73,13 @@ php bin/console milestones:update v33.0.4 stable33.json tag-only.json \
 ```
 
 For a stable release it resolves the next and upcoming dates from the schedule.
-If either is missing it **fails** (rather than creating a milestone with no due
-date), so the schedule has to be kept current; pre-releases need no dates.
-`--next-due` / `--upcoming-due` override the schedule for a one-off run. The date
-is applied whether the milestone is brand new or already there, so re-running is
-harmless and also fixes any wrong dates.
+The **next** milestone (the imminent release) is required: if it is neither in
+the schedule nor overridden, the command **fails** rather than creating a
+milestone with no due date. The milestone **after** that may not be scheduled
+yet, so it is set only when listed and otherwise left without a due date.
+Pre-releases need no dates. `--next-due` / `--upcoming-due` override the schedule
+for a one-off run. The date is applied whether the milestone is brand new or
+already there, so re-running is harmless and also fixes any wrong dates.
 
 **The first beta of a new major** (`v34.0.0beta1`) is special: it only creates
 the *next* major milestone, `Nextcloud 35`. `Nextcloud 34` already exists from
