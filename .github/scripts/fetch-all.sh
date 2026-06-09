@@ -62,8 +62,8 @@ jq -r '.[] | "\(.id) \(.repo) \(.composer_args // "")"' "$CONFIG" | while read -
     | length > 0
   ' "$OUTPUT/apps/$id/composer.json" > /dev/null 2>&1; then
     echo "  Running composer install for $id"
-    ARGS="${composer_args:---no-dev -a --quiet}"
-    (cd "$OUTPUT/apps/$id" && COMPOSER_ALLOW_SUPERUSER=1 composer install $ARGS)
+    read -r -a ARGS <<< "${composer_args:---no-dev -a --quiet}"
+    (cd "$OUTPUT/apps/$id" && COMPOSER_ALLOW_SUPERUSER=1 composer install "${ARGS[@]}")
   fi
 done
 
