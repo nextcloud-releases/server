@@ -7,7 +7,7 @@ declare(strict_types=1);
 
 namespace Nextcloud\ReleaseTools\Tests;
 
-use Nextcloud\ReleaseTools\GitHub\FakeGitHubApi;
+use Nextcloud\ReleaseTools\Tests\Support\FakeGitHubApi;
 use Nextcloud\ReleaseTools\MilestoneUpdater;
 use Nextcloud\ReleaseTools\Version;
 use PHPUnit\Framework\TestCase;

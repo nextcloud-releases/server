@@ -5,7 +5,10 @@
 
 declare(strict_types=1);
 
-namespace Nextcloud\ReleaseTools\GitHub;
+namespace Nextcloud\ReleaseTools\Tests\Support;
+
+use Nextcloud\ReleaseTools\GitHub\GitHubApi;
+use Nextcloud\ReleaseTools\GitHub\Milestone;
 
 /**
  * In-memory GitHubApi for tests. Seeded with milestones/issues/tags, it records
@@ -41,7 +44,7 @@ final class FakeGitHubApi implements GitHubApi
         $this->issues[$repo][$number] = $milestoneNumber;
     }
 
-    public function seedTag(string $repo, string $tag, string $sha = 'sha-' . '0000'): void
+    public function seedTag(string $repo, string $tag, string $sha = 'sha-0000'): void
     {
         $this->tags[$repo][$tag] = $sha;
     }
