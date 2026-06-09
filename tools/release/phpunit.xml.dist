@@ -28,6 +28,10 @@
         <testsuite name="tagger">
             <file>tests/RepoTaggerTest.php</file>
         </testsuite>
+        <!-- Updater-server release plan + config transforms. -->
+        <testsuite name="updater">
+            <directory>tests/Updater</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
