@@ -1,5 +1,0 @@
-# First stable v34.0.0: close the Nextcloud 34 milestone, open 34.0.1 and 34.0.2
-# columns (tab): <action> <repo> <args> -- create: title, due=<date|-> | setdue: #ms, date | move: #issue, #ms | close: #ms
-create	nextcloud/server	Nextcloud 34.0.1	due=-
-close	nextcloud/server	20
-create	nextcloud/server	Nextcloud 34.0.2	due=-

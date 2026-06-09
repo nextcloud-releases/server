@@ -1,0 +1,25 @@
+{
+    "results": [
+        {
+            "repo": "nextcloud/activity",
+            "status": "OK",
+            "branch": "stable34",
+            "detail": "recreated v34.0.1"
+        },
+        {
+            "repo": "nextcloud/server",
+            "status": "SKIPPED",
+            "branch": "stable34",
+            "detail": "already tagged"
+        }
+    ],
+    "journal": [
+        {
+            "action": "retag",
+            "repo": "nextcloud/activity",
+            "tag": "v34.0.1",
+            "sha": "sha-activity",
+            "force": true
+        }
+    ]
+}

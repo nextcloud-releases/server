@@ -1,0 +1,34 @@
+{
+    "journal": [
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 36",
+            "due": null
+        },
+        {
+            "action": "create",
+            "repo": "nextcloud/activity",
+            "title": "Nextcloud 36",
+            "due": null
+        }
+    ],
+    "milestones": {
+        "nextcloud/server": [
+            {
+                "number": 1,
+                "title": "Nextcloud 36",
+                "state": "open",
+                "due": null
+            }
+        ],
+        "nextcloud/activity": [
+            {
+                "number": 2,
+                "title": "Nextcloud 36",
+                "state": "open",
+                "due": null
+            }
+        ]
+    }
+}

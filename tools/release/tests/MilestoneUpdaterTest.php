@@ -39,10 +39,10 @@ final class MilestoneUpdaterTest extends TestCase
         $u->run(Version::fromTag('v33.0.4'), [self::REPO]);
 
         $this->assertSame([
-            "move\t" . self::REPO . "\t100\t11",
-            "move\t" . self::REPO . "\t101\t11",
-            "close\t" . self::REPO . "\t10",
-            "create\t" . self::REPO . "\tNextcloud 33.0.6\tdue=-",
+            ['action' => 'move', 'repo' => self::REPO, 'issue' => 100, 'milestone' => 11],
+            ['action' => 'move', 'repo' => self::REPO, 'issue' => 101, 'milestone' => 11],
+            ['action' => 'close', 'repo' => self::REPO, 'milestone' => 10],
+            ['action' => 'create', 'repo' => self::REPO, 'title' => 'Nextcloud 33.0.6', 'due' => null],
         ], $api->journal);
         $this->assertSame([1, 1, 2], [$u->created, $u->closed, $u->moved]);
     }
@@ -57,9 +57,9 @@ final class MilestoneUpdaterTest extends TestCase
         $u->run(Version::fromTag('v34.0.0'), [self::REPO]);
 
         $this->assertSame([
-            "create\t" . self::REPO . "\tNextcloud 34.0.1\tdue=-",
-            "close\t" . self::REPO . "\t20",
-            "create\t" . self::REPO . "\tNextcloud 34.0.2\tdue=-",
+            ['action' => 'create', 'repo' => self::REPO, 'title' => 'Nextcloud 34.0.1', 'due' => null],
+            ['action' => 'close', 'repo' => self::REPO, 'milestone' => 20],
+            ['action' => 'create', 'repo' => self::REPO, 'title' => 'Nextcloud 34.0.2', 'due' => null],
         ], $api->journal);
     }
 
@@ -70,7 +70,9 @@ final class MilestoneUpdaterTest extends TestCase
         $u->run(Version::fromTag('v35.0.0beta1'), [self::REPO]);
 
         // First beta of 35 opens 36.
-        $this->assertSame(["create\t" . self::REPO . "\tNextcloud 36\tdue=-"], $api->journal);
+        $this->assertSame([
+            ['action' => 'create', 'repo' => self::REPO, 'title' => 'Nextcloud 36', 'due' => null],
+        ], $api->journal);
     }
 
     public function testFirstBetaIdempotent(): void
@@ -92,10 +94,10 @@ final class MilestoneUpdaterTest extends TestCase
         $u->run(Version::fromTag('v33.0.4'), [self::REPO]);
 
         $this->assertSame([
-            "create\t" . self::REPO . "\tNextcloud 33.0.5\tdue=-",
-            "move\t" . self::REPO . "\t100\t11",
-            "close\t" . self::REPO . "\t10",
-            "create\t" . self::REPO . "\tNextcloud 33.0.6\tdue=-",
+            ['action' => 'create', 'repo' => self::REPO, 'title' => 'Nextcloud 33.0.5', 'due' => null],
+            ['action' => 'move', 'repo' => self::REPO, 'issue' => 100, 'milestone' => 11],
+            ['action' => 'close', 'repo' => self::REPO, 'milestone' => 10],
+            ['action' => 'create', 'repo' => self::REPO, 'title' => 'Nextcloud 33.0.6', 'due' => null],
         ], $api->journal);
     }
 
@@ -111,8 +113,8 @@ final class MilestoneUpdaterTest extends TestCase
         $u->run(Version::fromTag('v33.0.4'), [self::REPO]);
 
         $this->assertSame([
-            "move\t" . self::REPO . "\t100\t11",
-            "close\t" . self::REPO . "\t10",
+            ['action' => 'move', 'repo' => self::REPO, 'issue' => 100, 'milestone' => 11],
+            ['action' => 'close', 'repo' => self::REPO, 'milestone' => 10],
         ], $api->journal);
     }
 
@@ -126,9 +128,9 @@ final class MilestoneUpdaterTest extends TestCase
         $u->run(Version::fromTag('v33.0.4'), [self::REPO], '2026-07-02T00:00:00Z', '2026-08-27T00:00:00Z');
 
         $this->assertSame([
-            "setdue\t" . self::REPO . "\t11\t2026-07-02T00:00:00Z",
-            "close\t" . self::REPO . "\t10",
-            "create\t" . self::REPO . "\tNextcloud 33.0.6\tdue=2026-08-27T00:00:00Z",
+            ['action' => 'setdue', 'repo' => self::REPO, 'milestone' => 11, 'due' => '2026-07-02T00:00:00Z'],
+            ['action' => 'close', 'repo' => self::REPO, 'milestone' => 10],
+            ['action' => 'create', 'repo' => self::REPO, 'title' => 'Nextcloud 33.0.6', 'due' => '2026-08-27T00:00:00Z'],
         ], $api->journal);
     }
 
@@ -143,10 +145,22 @@ final class MilestoneUpdaterTest extends TestCase
         $u->run(Version::fromTag('v33.0.4'), [self::REPO], '2026-07-02T00:00:00Z', '2026-08-27T00:00:00Z');
 
         $this->assertSame([
-            "setdue\t" . self::REPO . "\t11\t2026-07-02T00:00:00Z",
-            "close\t" . self::REPO . "\t10",
-            "setdue\t" . self::REPO . "\t12\t2026-08-27T00:00:00Z",
+            ['action' => 'setdue', 'repo' => self::REPO, 'milestone' => 11, 'due' => '2026-07-02T00:00:00Z'],
+            ['action' => 'close', 'repo' => self::REPO, 'milestone' => 10],
+            ['action' => 'setdue', 'repo' => self::REPO, 'milestone' => 12, 'due' => '2026-08-27T00:00:00Z'],
         ], $api->journal);
+
+        // The existing milestones were updated in place, not duplicated: the
+        // set is unchanged (no create), 33.0.4 is closed, and the due dates
+        // landed on the milestones that were already there.
+        $after = [];
+        foreach ($api->listMilestones(self::REPO) as $m) {
+            $after[$m->number] = $m;
+        }
+        $this->assertSame([10, 11, 12], array_keys($after), 'no milestone created');
+        $this->assertSame('closed', $after[10]->state);
+        $this->assertSame('2026-07-02T00:00:00Z', $after[11]->dueOn);
+        $this->assertSame('2026-08-27T00:00:00Z', $after[12]->dueOn);
     }
 
     public function testNonFirstBetaPrereleaseIsNoop(): void
@@ -171,7 +185,8 @@ final class MilestoneUpdaterTest extends TestCase
         $u->run(Version::fromTag('v33.0.4'), [self::REPO]);
 
         $this->assertSame(150, $u->moved);
-        $this->assertSame(150, substr_count(implode("\n", $api->journal), "move\t"));
+        $moves = array_filter($api->journal, static fn (array $e) => $e['action'] === 'move');
+        $this->assertCount(150, $moves);
     }
 
     public function testDryRunChangesNothing(): void

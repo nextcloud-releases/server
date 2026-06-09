@@ -1,7 +1,0 @@
-# Tag v34.0.1 with --force: a normal repo is recreated, the server repo is still skipped
-# results (tab): <repo> <status> <branch> <detail>
-# tags (tab): <action> <repo> <tag> <sha> -- tag | retag adds force=<bool>
-nextcloud/activity	OK	stable34	recreated v34.0.1
-nextcloud/server	SKIPPED	stable34	already tagged
-
-retag	nextcloud/activity	v34.0.1	sha-activity	force=true

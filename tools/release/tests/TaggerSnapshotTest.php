@@ -9,7 +9,6 @@ namespace Nextcloud\ReleaseTools\Tests;
 
 use Nextcloud\ReleaseTools\RepoTagger;
 use Nextcloud\ReleaseTools\Tests\Support\FakeGitHubApi;
-use Nextcloud\ReleaseTools\Tests\Support\Journal;
 use Nextcloud\ReleaseTools\Tests\Support\MatchesSnapshots;
 use PHPUnit\Framework\TestCase;
 
@@ -18,27 +17,39 @@ use PHPUnit\Framework\TestCase;
  * it writes, across a representative mix of repositories.
  *
  * Why: pins the whole tag run (status + chosen branch + the create/recreate/skip
- * journal) as one reviewable artifact, covering create, skip-existing,
+ * journal) as one reviewable JSON artifact, covering create, skip-existing,
  * force-recreate, server-repo immutability, default-branch fallback and
- * no-branch failure together. Update with UPDATE_SNAPSHOTS=1.
+ * no-branch failure together. Each snapshot is {results[], journal[]}; the file
+ * is identified by its id (the snapshot name) and the human scenario lives only
+ * in the test. Update with UPDATE_SNAPSHOTS=1.
  */
 final class TaggerSnapshotTest extends TestCase
 {
     use MatchesSnapshots;
 
-    private function render(string $description, array $results, FakeGitHubApi $api): string
+    /**
+     * $scenario is the human description kept at the call site for readability;
+     * it is intentionally not stored in the snapshot (the file is identified by
+     * its id), so rewording it never churns a golden file.
+     *
+     * @param list<\Nextcloud\ReleaseTools\TagResult> $results
+     * @return array{results: list<array<string, mixed>>, journal: list<array<string, mixed>>}
+     */
+    private function render(string $scenario, array $results, FakeGitHubApi $api): array
     {
-        $lines = [
-            "# {$description}",
-            '# results (tab): <repo> <status> <branch> <detail>',
-            '# ' . Journal::TAG_LEGEND,
+        unset($scenario); // documents the call site only; see above.
+        return [
+            'results' => array_map(
+                static fn ($r) => [
+                    'repo' => $r->repo,
+                    'status' => $r->status,
+                    'branch' => $r->branch === '' ? null : $r->branch,
+                    'detail' => $r->detail,
+                ],
+                $results,
+            ),
+            'journal' => $api->journal,
         ];
-        foreach ($results as $r) {
-            $lines[] = sprintf("%s\t%s\t%s\t%s", $r->repo, $r->status, $r->branch === '' ? '-' : $r->branch, $r->detail);
-        }
-        $lines[] = '';
-        $lines[] = $api->journal === [] ? '(no tags written)' : implode("\n", $api->journal);
-        return implode("\n", $lines);
     }
 
     public function testMixedRun(): void
@@ -64,7 +75,7 @@ final class TaggerSnapshotTest extends TestCase
             $repos,
         );
 
-        $this->assertMatchesSnapshot('tagger/mixed', $this->render('Tag v34.0.1 across a mixed set: new, already-tagged, default-branch fallback, server (immutable), and a repo with no branch', $results, $api));
+        $this->assertMatchesJsonSnapshot('tagger/mixed', $this->render('Tag v34.0.1 across a mixed set: new, already-tagged, default-branch fallback, server (immutable), and a repo with no branch', $results, $api));
     }
 
     public function testForceRun(): void
@@ -80,7 +91,7 @@ final class TaggerSnapshotTest extends TestCase
             $tagger->tag('nextcloud/activity', 'stable34', 'v34.0.1', true),
             $tagger->tag('nextcloud/server', 'stable34', 'v34.0.1', true),
         ];
-        $this->assertMatchesSnapshot('tagger/force', $this->render('Tag v34.0.1 with --force: a normal repo is recreated, the server repo is still skipped', $results, $api));
+        $this->assertMatchesJsonSnapshot('tagger/force', $this->render('Tag v34.0.1 with --force: a normal repo is recreated, the server repo is still skipped', $results, $api));
     }
 
     public function testDryRun(): void
@@ -88,6 +99,6 @@ final class TaggerSnapshotTest extends TestCase
         $api = new FakeGitHubApi();
         $api->seedBranch('nextcloud/activity', 'stable34', 'sha-activity', true);
         $results = [(new RepoTagger($api, dryRun: true))->tag('nextcloud/activity', 'stable34', 'v34.0.1', false)];
-        $this->assertMatchesSnapshot('tagger/dry-run', $this->render('Tag v34.0.1 in dry-run: reports what it would do, writes nothing', $results, $api));
+        $this->assertMatchesJsonSnapshot('tagger/dry-run', $this->render('Tag v34.0.1 in dry-run: reports what it would do, writes nothing', $results, $api));
     }
 }

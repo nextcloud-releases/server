@@ -1,0 +1,13 @@
+{
+    "journal": [],
+    "milestones": {
+        "nextcloud/server": [
+            {
+                "number": 10,
+                "title": "Nextcloud 33.0.2",
+                "state": "open",
+                "due": null
+            }
+        ]
+    }
+}

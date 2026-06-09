@@ -28,7 +28,7 @@ final class FakeGitHubApi implements GitHubApi
     /** @var array<string, array<string, string>> repo => branch => sha */
     private array $branches = [];
 
-    /** @var list<string> ordered mutation log */
+    /** @var list<array<string, mixed>> ordered mutation log, one structured entry per call */
     public array $journal = [];
 
     private int $nextNumber = 1;
@@ -62,11 +62,28 @@ final class FakeGitHubApi implements GitHubApi
         return array_values($this->milestones[$repo] ?? []);
     }
 
+    /**
+     * Final milestone state per repo (numerically ordered), for snapshots: lets
+     * a golden file show that the expected milestones exist with the right
+     * state/due date, not just which mutations ran.
+     *
+     * @return array<string, list<Milestone>>
+     */
+    public function milestoneState(): array
+    {
+        $out = [];
+        foreach ($this->milestones as $repo => $byNumber) {
+            ksort($byNumber);
+            $out[$repo] = array_values($byNumber);
+        }
+        return $out;
+    }
+
     public function createMilestone(string $repo, string $title, ?string $dueOn): int
     {
         $number = $this->nextNumber++;
         $this->milestones[$repo][$number] = new Milestone($number, $title, 'open', 0, $dueOn);
-        $this->journal[] = sprintf("create\t%s\t%s\tdue=%s", $repo, $title, $dueOn ?? '-');
+        $this->journal[] = ['action' => 'create', 'repo' => $repo, 'title' => $title, 'due' => $dueOn];
         return $number;
     }
 
@@ -74,14 +91,14 @@ final class FakeGitHubApi implements GitHubApi
     {
         $m = $this->milestones[$repo][$number];
         $this->milestones[$repo][$number] = new Milestone($m->number, $m->title, 'closed', $m->openIssues, $m->dueOn);
-        $this->journal[] = sprintf("close\t%s\t%d", $repo, $number);
+        $this->journal[] = ['action' => 'close', 'repo' => $repo, 'milestone' => $number];
     }
 
     public function setMilestoneDue(string $repo, int $number, string $dueOn): void
     {
         $m = $this->milestones[$repo][$number];
         $this->milestones[$repo][$number] = new Milestone($m->number, $m->title, $m->state, $m->openIssues, $dueOn);
-        $this->journal[] = sprintf("setdue\t%s\t%d\t%s", $repo, $number, $dueOn);
+        $this->journal[] = ['action' => 'setdue', 'repo' => $repo, 'milestone' => $number, 'due' => $dueOn];
     }
 
     public function openIssueNumbers(string $repo, int $milestoneNumber): array
@@ -99,7 +116,7 @@ final class FakeGitHubApi implements GitHubApi
     public function moveIssue(string $repo, int $issueNumber, int $milestoneNumber): void
     {
         $this->issues[$repo][$issueNumber] = $milestoneNumber;
-        $this->journal[] = sprintf("move\t%s\t%d\t%d", $repo, $issueNumber, $milestoneNumber);
+        $this->journal[] = ['action' => 'move', 'repo' => $repo, 'issue' => $issueNumber, 'milestone' => $milestoneNumber];
     }
 
     public function listTagNames(string $repo): array
@@ -125,12 +142,12 @@ final class FakeGitHubApi implements GitHubApi
     public function createTag(string $repo, string $tag, string $sha): void
     {
         $this->tags[$repo][$tag] = $sha;
-        $this->journal[] = sprintf("tag\t%s\t%s\t%s", $repo, $tag, $sha);
+        $this->journal[] = ['action' => 'tag', 'repo' => $repo, 'tag' => $tag, 'sha' => $sha];
     }
 
     public function updateTag(string $repo, string $tag, string $sha, bool $force): void
     {
         $this->tags[$repo][$tag] = $sha;
-        $this->journal[] = sprintf("retag\t%s\t%s\t%s\tforce=%s", $repo, $tag, $sha, $force ? 'true' : 'false');
+        $this->journal[] = ['action' => 'retag', 'repo' => $repo, 'tag' => $tag, 'sha' => $sha, 'force' => $force];
     }
 }

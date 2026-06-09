@@ -33,7 +33,9 @@ final class RepoTaggerTest extends TestCase
         $api = $this->api();
         $r = (new RepoTagger($api))->tag('nextcloud/activity', 'stable34', 'v34.0.1', false);
         $this->assertSame('OK', $r->status);
-        $this->assertSame(["tag\tnextcloud/activity\tv34.0.1\tsha-stable"], $api->journal);
+        $this->assertSame([
+            ['action' => 'tag', 'repo' => 'nextcloud/activity', 'tag' => 'v34.0.1', 'sha' => 'sha-stable'],
+        ], $api->journal);
     }
 
     public function testSkipsWhenTagExistsWithoutForce(): void
@@ -51,7 +53,9 @@ final class RepoTaggerTest extends TestCase
         $api->seedTag('nextcloud/activity', 'v34.0.1', 'old-sha');
         $r = (new RepoTagger($api))->tag('nextcloud/activity', 'stable34', 'v34.0.1', true);
         $this->assertSame('OK', $r->status);
-        $this->assertSame(["retag\tnextcloud/activity\tv34.0.1\tsha-stable\tforce=true"], $api->journal);
+        $this->assertSame([
+            ['action' => 'retag', 'repo' => 'nextcloud/activity', 'tag' => 'v34.0.1', 'sha' => 'sha-stable', 'force' => true],
+        ], $api->journal);
     }
 
     public function testServerRepoNeverForceRetagged(): void
@@ -72,7 +76,9 @@ final class RepoTaggerTest extends TestCase
         $r = (new RepoTagger($api))->tag('nextcloud/notes', 'stable34', 'v34.0.1', false);
         $this->assertSame('OK', $r->status);
         $this->assertSame('main', $r->branch);
-        $this->assertSame(["tag\tnextcloud/notes\tv34.0.1\tsha-main"], $api->journal);
+        $this->assertSame([
+            ['action' => 'tag', 'repo' => 'nextcloud/notes', 'tag' => 'v34.0.1', 'sha' => 'sha-main'],
+        ], $api->journal);
     }
 
     public function testNoBranchFails(): void

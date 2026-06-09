@@ -1,0 +1,43 @@
+{
+    "journal": [
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 34.0.1",
+            "due": null
+        },
+        {
+            "action": "close",
+            "repo": "nextcloud/server",
+            "milestone": 20
+        },
+        {
+            "action": "create",
+            "repo": "nextcloud/server",
+            "title": "Nextcloud 34.0.2",
+            "due": null
+        }
+    ],
+    "milestones": {
+        "nextcloud/server": [
+            {
+                "number": 20,
+                "title": "Nextcloud 34",
+                "state": "closed",
+                "due": null
+            },
+            {
+                "number": 21,
+                "title": "Nextcloud 34.0.1",
+                "state": "open",
+                "due": null
+            },
+            {
+                "number": 22,
+                "title": "Nextcloud 34.0.2",
+                "state": "open",
+                "due": null
+            }
+        ]
+    }
+}
