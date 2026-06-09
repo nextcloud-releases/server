@@ -1,0 +1,7 @@
+./appinfo/info.xml
+./composer.json
+./composer.lock
+./js/app.js.map
+./lib/Foo.php
+./package-lock.json
+./package.json

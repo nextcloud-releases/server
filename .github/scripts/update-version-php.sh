@@ -9,13 +9,15 @@
 
 set -e
 
-NC="${1:?Usage: update-version-php.sh <nextcloud-dir> <channel> <branch>}"
+# NC is exported because the inline PHP below reads it via getenv('NC').
+export NC="${1:?Usage: update-version-php.sh <nextcloud-dir> <channel> <branch>}"
 export CHANNEL="${2:?Missing channel (stable/beta)}"
 export BRANCH="${3:?Missing branch (stable34/master)}"
 
 COMMIT_HASH=$(cat "$NC/release-commit-hash")
 rm -f "$NC/release-commit-hash"
-export BUILD_STRING="$(date -u +%Y-%m-%dT%H:%M:%S+00:00) ${COMMIT_HASH}"
+BUILD_STRING="$(date -u +%Y-%m-%dT%H:%M:%S+00:00) ${COMMIT_HASH}"
+export BUILD_STRING
 
 # Preserves OC_Version and OC_VersionString from the repo.
 # Sets channel, build timestamp, edition, and vendor.

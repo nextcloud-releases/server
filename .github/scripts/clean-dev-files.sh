@@ -25,7 +25,9 @@ if [ -f ".nextcloudignore" ]; then
     clean="${pattern#/}"
     skip=false
     for keep in "${KEEP_FILES[@]}"; do
-      # shellcheck disable=SC2254
+      # $clean is an intentional glob pattern (e.g. composer.*) matched against
+      # the preserved file name, so the RHS must stay unquoted.
+      # shellcheck disable=SC2053,SC2254
       if [[ "$keep" == $clean ]]; then
         skip=true
         break

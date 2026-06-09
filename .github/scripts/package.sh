@@ -9,6 +9,22 @@
 
 set -e
 
+# Generate sha256/sha512/md5 sidecars for the release archives
+# (nextcloud-<version>.{tar.bz2,zip}) in <output-dir>.
+generate_checksums() {
+  local output="$1" version="$2" file
+  for file in "nextcloud-${version}.tar.bz2" "nextcloud-${version}.zip"; do
+    [ -f "$output/$file" ] || continue
+    ( cd "$output" \
+      && sha256sum "$file" > "${file}.sha256" \
+      && sha512sum "$file" > "${file}.sha512" \
+      && md5sum "$file" > "${file}.md5" )
+  done
+}
+
+# When sourced (tests), stop here after defining functions.
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 0
+
 NC="${1:?Usage: package.sh <nextcloud-dir> <version> <output-dir>}"
 VERSION="${2:?Missing version}"
 OUTPUT="${3:?Missing output directory}"
@@ -33,13 +49,7 @@ echo "Creating zip..."
 
 # Generate checksums
 echo "Generating checksums..."
-cd "$OUTPUT"
-for file in "nextcloud-${VERSION}.tar.bz2" "nextcloud-${VERSION}.zip"; do
-  [ -f "$file" ] || continue
-  sha256sum "$file" > "${file}.sha256"
-  sha512sum "$file" > "${file}.sha512"
-  md5sum "$file" > "${file}.md5"
-done
+generate_checksums "$OUTPUT" "$VERSION"
 
 echo "Packages created:"
 ls -lh "$OUTPUT/nextcloud-${VERSION}"*
