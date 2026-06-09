@@ -1,3 +1,0 @@
-create	nextcloud/server	Nextcloud 34.0.1	due=-
-close	nextcloud/server	20
-create	nextcloud/server	Nextcloud 34.0.2	due=-

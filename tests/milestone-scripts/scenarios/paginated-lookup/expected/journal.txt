@@ -1,3 +1,0 @@
-move	nextcloud/server	500	201
-close	nextcloud/server	200
-create	nextcloud/server	Nextcloud 34.0.6	due=-

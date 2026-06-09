@@ -11,6 +11,12 @@ use Nextcloud\ReleaseTools\Version;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * What: tag string -> Version parsing (major/minor/patch, prerelease, first-beta).
+ *
+ * Why: this is the root of every milestone decision; the bash used cut/sed/regex
+ * that were easy to get subtly wrong (suffix stripping, .0.0beta1 detection).
+ */
 final class VersionTest extends TestCase
 {
     /**

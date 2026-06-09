@@ -76,6 +76,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up PHP
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install release-tools
+        run: composer install --no-interaction --no-progress --no-dev
+        working-directory: tools/release
+
       # Alpha/beta releases use master.json (they branch from master).
       # Stable releases use stableXX.json matching their major version.
       - name: Determine config file
@@ -114,7 +124,7 @@ jobs:
           if [[ -n "${{ inputs.upcoming_due }}" ]]; then
             ARGS+=("--upcoming-due" "${{ inputs.upcoming_due }}")
           fi
-          bash .github/scripts/update-milestones.sh "${ARGS[@]}"
+          php tools/release/bin/console milestones:update "${ARGS[@]}"
 
       # Audit runs after every update (and on audit_only) to verify
       # milestone consistency: orphans, missing milestones, naming issues.
@@ -124,6 +134,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          bash .github/scripts/audit-milestones.sh \
+          php tools/release/bin/console milestones:audit \
             "${{ steps.config.outputs.config }}" \
             "tag-only.json" || true

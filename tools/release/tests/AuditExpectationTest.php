@@ -11,6 +11,12 @@ use Nextcloud\ReleaseTools\AuditExpectation;
 use Nextcloud\ReleaseTools\Version;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * What: expected milestone names for a major + the orphan rule.
+ *
+ * Why: encodes what 'consistent' means for the audit (released closed, two
+ * patch milestones open, older open patches are orphans).
+ */
 final class AuditExpectationTest extends TestCase
 {
     public function testExpectedMilestonesForLatestStable(): void

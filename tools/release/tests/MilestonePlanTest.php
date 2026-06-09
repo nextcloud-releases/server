@@ -11,6 +11,13 @@ use Nextcloud\ReleaseTools\MilestonePlan;
 use Nextcloud\ReleaseTools\Version;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * What: the milestone-name math - current/next/upcoming names and the
+ * first-beta -> next-major (N+1) rule.
+ *
+ * Why: this is exactly where the production bugs lived (first-beta off-by-one,
+ * the two-open-patch invariant). Plain assertions, no fixtures.
+ */
 final class MilestonePlanTest extends TestCase
 {
     public function testStablePatchPlan(): void

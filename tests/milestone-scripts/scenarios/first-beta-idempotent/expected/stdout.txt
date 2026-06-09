@@ -1,8 +1,0 @@
-First beta detected (v35.0.0beta1). Creating milestone 'Nextcloud 36' across 1 repos.
-Processing nextcloud/server...
-  Milestone 'Nextcloud 36' already exists (#30)
-
-=== Summary ===
-  Milestones closed: 0
-  Milestones created: 0
-  Issues moved: 0

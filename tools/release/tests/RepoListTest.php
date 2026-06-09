@@ -10,6 +10,13 @@ namespace Nextcloud\ReleaseTools\Tests;
 use Nextcloud\ReleaseTools\RepoList;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * What: merging the two config shapes (objects with .repo, plain strings) into
+ * a sorted unique repo list.
+ *
+ * Why: replaces the jq pipeline; the union/sort/dedupe must match so the same
+ * repos are processed.
+ */
 final class RepoListTest extends TestCase
 {
     public function testMergesObjectAndStringFormatsSortedUnique(): void

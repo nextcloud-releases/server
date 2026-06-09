@@ -11,6 +11,12 @@ use Nextcloud\ReleaseTools\DueDate;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * What: YYYY-MM-DD validation + ISO conversion.
+ *
+ * Why: a malformed date must fail fast (the bash exited 1); valid dates must
+ * become the exact `...T00:00:00Z` the GitHub API expects.
+ */
 final class DueDateTest extends TestCase
 {
     public function testValidConvertsToIso(): void

@@ -59,8 +59,10 @@ bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
 | `generate-metadata.sh` | Generate migration metadata (NC30+) |
 | `package.sh` | Set permissions, create tar.bz2 + zip, generate checksums |
 | `update-updater-server.sh` | Create a PR to the updater server with release config and tests |
-| `update-milestones.sh` | Close/create milestones and move issues across all release repos |
-| `audit-milestones.sh` | Check milestone consistency: orphans, missing milestones, naming issues |
+
+> Milestone management and repository tagging have moved to the unit-tested PHP
+> package in [`tools/release/`](../../tools/release/README.md)
+> (`milestones:update`, `milestones:audit`, `repo:tag`).
 
 ## Updater server
 
@@ -88,43 +90,11 @@ bash .github/scripts/update-updater-server.sh v33.0.6 "$BZ2_SIG" "$ZIP_SIG" --re
 
 The workflow (`release-updater.yml`) can also be triggered manually from the Actions UI with a dry-run option for testing.
 
-## Milestone management
+## Milestone management & tagging
 
-Update milestones after a stable release. For `v33.0.4` this will:
-
-1. Close `Nextcloud 33.0.4` across all repos
-2. Move open issues to `Nextcloud 33.0.5` (should already exist from previous release)
-3. Create `Nextcloud 33.0.6` so two open patch milestones always exist (33.0.5 + 33.0.6)
-
-```bash
-# Dry run first
-bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json --dry-run
-
-# Apply with due dates for the two open patch milestones.
-# --next-due     -> the next patch (33.0.5)
-# --upcoming-due -> the one after (33.0.6)
-# Each date is applied whether the milestone is created now or already exists,
-# so re-running with the same dates is a no-op and fixes any stale dates.
-bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json \
-  --next-due 2026-07-02 --upcoming-due 2026-08-27
-
-# Apply without due dates (can be set later manually)
-bash .github/scripts/update-milestones.sh v33.0.4 stable33.json tag-only.json
-```
-
-Create the next major milestone on first beta. The first beta of major N opens
-development of N+1, so `v34.0.0beta1` creates `Nextcloud 35` (the `Nextcloud 34`
-milestone already exists from the previous cycle):
-
-```bash
-bash .github/scripts/update-milestones.sh v34.0.0beta1 master.json tag-only.json
-```
-
-Audit milestone consistency (detects orphans, missing milestones, naming issues):
-
-```bash
-bash .github/scripts/audit-milestones.sh stable33.json tag-only.json
-```
+Moved to the PHP package - see [`tools/release/`](../../tools/release/README.md),
+which documents the full release auto-logic (when milestones are created/closed,
+when tags are created, which branch is used).
 
 The audit determines expected state from the latest stable release tags on
 `nextcloud-releases/server`. It exits with code 1 if issues are found.
