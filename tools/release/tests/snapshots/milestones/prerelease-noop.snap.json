@@ -1,4 +1,15 @@
 {
     "scenario": "Non-first-beta pre-release v33.0.2rc1: nothing happens",
-    "journal": []
+    "journal": [],
+    "milestones": {
+        "nextcloud/server": [
+            {
+                "number": 10,
+                "title": "Nextcloud 33.0.2",
+                "state": "open",
+                "openIssues": 0,
+                "due": null
+            }
+        ]
+    }
 }

@@ -24,5 +24,30 @@
             "title": "Nextcloud 33.0.6",
             "due": null
         }
-    ]
+    ],
+    "milestones": {
+        "nextcloud/server": [
+            {
+                "number": 10,
+                "title": "Nextcloud 33.0.4",
+                "state": "closed",
+                "openIssues": 1,
+                "due": null
+            },
+            {
+                "number": 11,
+                "title": "Nextcloud 33.0.5",
+                "state": "open",
+                "openIssues": 0,
+                "due": null
+            },
+            {
+                "number": 12,
+                "title": "Nextcloud 33.0.6",
+                "state": "open",
+                "openIssues": 0,
+                "due": null
+            }
+        ]
+    }
 }

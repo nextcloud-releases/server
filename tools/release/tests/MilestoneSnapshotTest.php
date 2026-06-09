@@ -31,10 +31,26 @@ final class MilestoneSnapshotTest extends TestCase
     private const SERVER = 'nextcloud/server';
     private const ACTIVITY = 'nextcloud/activity';
 
-    /** @return array{scenario: string, journal: list<array<string, mixed>>} */
+    /** @return array{scenario: string, journal: list<array<string, mixed>>, milestones: array<string, list<array<string, mixed>>>} */
     private function snapshot(string $scenario, FakeGitHubApi $api): array
     {
-        return ['scenario' => $scenario, 'journal' => $api->journal];
+        $milestones = [];
+        foreach ($api->milestoneState() as $repo => $list) {
+            $milestones[$repo] = array_map(
+                static fn ($m) => [
+                    'number' => $m->number,
+                    'title' => $m->title,
+                    'state' => $m->state,
+                    'openIssues' => $m->openIssues,
+                    'due' => $m->dueOn,
+                ],
+                $list,
+            );
+        }
+        // journal = the mutations that ran; milestones = the resulting state, so
+        // a snapshot shows both what changed and that the expected milestones
+        // exist afterwards (e.g. updated in place rather than recreated).
+        return ['scenario' => $scenario, 'journal' => $api->journal, 'milestones' => $milestones];
     }
 
     public function testPatchRelease(): void

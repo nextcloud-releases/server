@@ -62,6 +62,23 @@ final class FakeGitHubApi implements GitHubApi
         return array_values($this->milestones[$repo] ?? []);
     }
 
+    /**
+     * Final milestone state per repo (numerically ordered), for snapshots: lets
+     * a golden file show that the expected milestones exist with the right
+     * state/due date, not just which mutations ran.
+     *
+     * @return array<string, list<Milestone>>
+     */
+    public function milestoneState(): array
+    {
+        $out = [];
+        foreach ($this->milestones as $repo => $byNumber) {
+            ksort($byNumber);
+            $out[$repo] = array_values($byNumber);
+        }
+        return $out;
+    }
+
     public function createMilestone(string $repo, string $title, ?string $dueOn): int
     {
         $number = $this->nextNumber++;

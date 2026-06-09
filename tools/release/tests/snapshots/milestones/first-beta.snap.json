@@ -13,5 +13,25 @@
             "title": "Nextcloud 36",
             "due": null
         }
-    ]
+    ],
+    "milestones": {
+        "nextcloud/server": [
+            {
+                "number": 1,
+                "title": "Nextcloud 36",
+                "state": "open",
+                "openIssues": 0,
+                "due": null
+            }
+        ],
+        "nextcloud/activity": [
+            {
+                "number": 2,
+                "title": "Nextcloud 36",
+                "state": "open",
+                "openIssues": 0,
+                "due": null
+            }
+        ]
+    }
 }
