@@ -149,6 +149,18 @@ final class MilestoneUpdaterTest extends TestCase
             ['action' => 'close', 'repo' => self::REPO, 'milestone' => 10],
             ['action' => 'setdue', 'repo' => self::REPO, 'milestone' => 12, 'due' => '2026-08-27T00:00:00Z'],
         ], $api->journal);
+
+        // The existing milestones were updated in place, not duplicated: the
+        // set is unchanged (no create), 33.0.4 is closed, and the due dates
+        // landed on the milestones that were already there.
+        $after = [];
+        foreach ($api->listMilestones(self::REPO) as $m) {
+            $after[$m->number] = $m;
+        }
+        $this->assertSame([10, 11, 12], array_keys($after), 'no milestone created');
+        $this->assertSame('closed', $after[10]->state);
+        $this->assertSame('2026-07-02T00:00:00Z', $after[11]->dueOn);
+        $this->assertSame('2026-08-27T00:00:00Z', $after[12]->dueOn);
     }
 
     public function testNonFirstBetaPrereleaseIsNoop(): void
