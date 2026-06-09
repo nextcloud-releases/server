@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+name: Test build scripts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/scripts/**'
+      - 'tests/build-scripts/**'
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - 'tests/build-scripts/**'
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      # Global lint of every release script and every test harness.
+      - name: Shellcheck
+        run: shellcheck $(find .github/scripts tests -type f -name '*.sh' | sort)
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+        with:
+          php-version: '8.2'
+          tools: none
+
+      - name: Run snapshot tests
+        run: bash tests/build-scripts/run.sh
+
+      - name: Run unit tests
+        run: bash tests/build-scripts/unit.sh

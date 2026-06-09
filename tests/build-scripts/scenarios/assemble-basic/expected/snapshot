@@ -1,0 +1,11 @@
+./3rdparty/autoload.php
+./apps/files/appinfo.xml
+./apps/news/main.php
+./apps/notes/main.php
+./core/doc/admin/index.html
+./core/doc/user/index.html
+./core/skeleton/Nextcloud Manual.pdf
+./core/skeleton/Readme.md
+./updater/index.php
+./updater/updater.phar
+./version.php

@@ -9,9 +9,18 @@
 
 set -e
 
+# Resolve the signing certificate path: the given one, or the release default.
+# Args: <nextcloud-dir> [certificate]
+default_cert() {
+  echo "${2:-$1/resources/codesigning/core.crt}"
+}
+
+# When sourced (tests), stop here after defining functions.
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 0
+
 NC="${1:?Usage: sign-release.sh <nextcloud-dir> <private-key> [certificate]}"
 KEY="${2:?Missing private key path}"
-CERT="${3:-$NC/resources/codesigning/core.crt}"
+CERT="$(default_cert "$NC" "${3:-}")"
 
 chmod 755 "$NC/occ"
 chmod 777 "$NC/config"

@@ -1,0 +1,11 @@
+<?php 
+$OC_Version = array(34,0,0,1);
+$OC_VersionString = '34.0.0';
+$OC_Edition = '';
+$OC_Channel = 'stable';
+$OC_VersionCanBeUpgradedFrom = array (
+  0 => 33,
+  1 => 0,
+);
+$OC_Build = '<DATE> deadbeefcafe1234567890abcdef00112233abcd';
+$vendor = 'nextcloud';
