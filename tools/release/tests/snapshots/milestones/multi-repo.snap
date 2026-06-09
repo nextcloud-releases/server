@@ -1,0 +1,6 @@
+move	nextcloud/server	500	11
+close	nextcloud/server	10
+create	nextcloud/server	Nextcloud 33.0.6	due=-
+move	nextcloud/activity	501	21
+close	nextcloud/activity	20
+create	nextcloud/activity	Nextcloud 33.0.6	due=-

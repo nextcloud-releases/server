@@ -19,6 +19,7 @@
         <!-- Milestone mover: close/create/move + due dates. -->
         <testsuite name="milestones-update">
             <file>tests/MilestoneUpdaterTest.php</file>
+            <file>tests/MilestoneSnapshotTest.php</file>
         </testsuite>
         <!-- Milestone consistency audit. -->
         <testsuite name="milestones-audit">
@@ -27,6 +28,7 @@
         <!-- Repository tagging. -->
         <testsuite name="tagger">
             <file>tests/RepoTaggerTest.php</file>
+            <file>tests/TaggerSnapshotTest.php</file>
         </testsuite>
         <!-- Updater-server release plan + config transforms. -->
         <testsuite name="updater">
