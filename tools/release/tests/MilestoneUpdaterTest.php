@@ -203,4 +203,22 @@ final class MilestoneUpdaterTest extends TestCase
         $this->assertNotEmpty($u->log);
         $this->assertStringContainsString('would', strtolower(implode("\n", $u->log)));
     }
+
+    public function testAlreadyClosedCurrentIsNotReclosed(): void
+    {
+        // Re-running a shipped release (e.g. to backfill due dates): the current
+        // milestone is already closed, so it must not be closed again, counted,
+        // or logged as closed.
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 10, 'Nextcloud 33.0.4', 'closed');
+        $api->seedMilestone(self::REPO, 11, 'Nextcloud 33.0.5');
+        $api->seedMilestone(self::REPO, 12, 'Nextcloud 33.0.6');
+
+        $u = new MilestoneUpdater($api);
+        $u->run(Version::fromTag('v33.0.4'), [self::REPO]);
+
+        $this->assertSame([], $api->journal, 'nothing to do: no re-close, no moves, milestones already exist');
+        $this->assertSame(0, $u->closed);
+        $this->assertStringNotContainsString('closed', strtolower(implode("\n", $u->log)));
+    }
 }
