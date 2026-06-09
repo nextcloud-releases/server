@@ -26,18 +26,18 @@ final class TaggerSnapshotTest extends TestCase
 {
     use MatchesSnapshots;
 
-    private function render(array $results, FakeGitHubApi $api): string
+    private function render(string $description, array $results, FakeGitHubApi $api): string
     {
-        $lines = ['Results:'];
+        $lines = [
+            "# {$description}",
+            '# results (tab): <repo> <status> <branch> <detail>',
+            '# ' . Journal::TAG_LEGEND,
+        ];
         foreach ($results as $r) {
-            $branch = $r->branch !== '' ? " on {$r->branch}" : '';
-            $lines[] = sprintf('  %s: %s%s (%s)', $r->repo, $r->status, $branch, $r->detail);
+            $lines[] = sprintf("%s\t%s\t%s\t%s", $r->repo, $r->status, $r->branch === '' ? '-' : $r->branch, $r->detail);
         }
         $lines[] = '';
-        $lines[] = 'Tags written:';
-        $lines[] = $api->journal === []
-            ? '  (none)'
-            : '  ' . implode("\n  ", explode("\n", Journal::render($api->journal)));
+        $lines[] = $api->journal === [] ? '(no tags written)' : implode("\n", $api->journal);
         return implode("\n", $lines);
     }
 
@@ -64,7 +64,7 @@ final class TaggerSnapshotTest extends TestCase
             $repos,
         );
 
-        $this->assertMatchesSnapshot('tagger/mixed', $this->render($results, $api));
+        $this->assertMatchesSnapshot('tagger/mixed', $this->render('Tag v34.0.1 across a mixed set: new, already-tagged, default-branch fallback, server (immutable), and a repo with no branch', $results, $api));
     }
 
     public function testForceRun(): void
@@ -80,7 +80,7 @@ final class TaggerSnapshotTest extends TestCase
             $tagger->tag('nextcloud/activity', 'stable34', 'v34.0.1', true),
             $tagger->tag('nextcloud/server', 'stable34', 'v34.0.1', true),
         ];
-        $this->assertMatchesSnapshot('tagger/force', $this->render($results, $api));
+        $this->assertMatchesSnapshot('tagger/force', $this->render('Tag v34.0.1 with --force: a normal repo is recreated, the server repo is still skipped', $results, $api));
     }
 
     public function testDryRun(): void
@@ -88,6 +88,6 @@ final class TaggerSnapshotTest extends TestCase
         $api = new FakeGitHubApi();
         $api->seedBranch('nextcloud/activity', 'stable34', 'sha-activity', true);
         $results = [(new RepoTagger($api, dryRun: true))->tag('nextcloud/activity', 'stable34', 'v34.0.1', false)];
-        $this->assertMatchesSnapshot('tagger/dry-run', $this->render($results, $api));
+        $this->assertMatchesSnapshot('tagger/dry-run', $this->render('Tag v34.0.1 in dry-run: reports what it would do, writes nothing', $results, $api));
     }
 }

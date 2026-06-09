@@ -1,3 +1,5 @@
-set due date of milestone #11 to 2026-07-02T00:00:00Z in nextcloud/server
-close milestone #10 in nextcloud/server
-set due date of milestone #12 to 2026-08-27T00:00:00Z in nextcloud/server
+# Patch v33.0.4 with due dates: set 33.0.5 and 33.0.6 due dates, close 33.0.4
+# columns (tab): <action> <repo> <args> -- create: title, due=<date|-> | setdue: #ms, date | move: #issue, #ms | close: #ms
+setdue	nextcloud/server	11	2026-07-02T00:00:00Z
+close	nextcloud/server	10
+setdue	nextcloud/server	12	2026-08-27T00:00:00Z

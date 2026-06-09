@@ -1,5 +1,6 @@
-Results:
-  nextcloud/activity: OK on stable34 (would create v34.0.1 @ sha-activity)
+# Tag v34.0.1 in dry-run: reports what it would do, writes nothing
+# results (tab): <repo> <status> <branch> <detail>
+# tags (tab): <action> <repo> <tag> <sha> -- tag | retag adds force=<bool>
+nextcloud/activity	OK	stable34	would create v34.0.1 @ sha-activity
 
-Tags written:
-  (none)
+(no tags written)
