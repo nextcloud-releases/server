@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [domain, milestones-update, milestones-audit, tagger]
+        suite: [domain, milestones-update, milestones-audit, tagger, updater]
     name: test (${{ matrix.suite }})
     defaults:
       run:
