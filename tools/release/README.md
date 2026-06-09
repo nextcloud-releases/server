@@ -10,11 +10,12 @@ parts that parse versions, walk the API and make decisions moved here where they
 are far easier to read and to test. The parts that shuffle files around (build,
 package, sign) are still bash, because that is what bash is good at.
 
-There are three commands today:
+The commands today:
 
 - **`milestones:update`** - after a release, tidy up the milestones.
 - **`milestones:audit`** - check the milestones look right (read-only).
 - **`repo:tag`** - tag all the release repositories.
+- **`updater:bump`** - update a checked-out updater_server with a release.
 
 ```bash
 cd tools/release
@@ -96,6 +97,24 @@ lightweight tag created through the API - no cloning, no pushing.
 If a tag already exists it is left alone, unless you pass `--force`. The one
 exception: **the server repositories are never re-tagged**, even with `--force`,
 because a published release tag must never move.
+
+### Updater server (`updater:bump`)
+
+After a release is built and signed, this updates a checked-out
+[updater_server](https://github.com/nextcloud-releases/updater_server):
+
+- adds/replaces the entry in `config/releases.json` (internal version,
+  signatures, and `deploy` percentage when below 100%);
+- for a first pre-release of a new major, registers it in
+  `config/major_versions.json`;
+- rewrites the Behat feature files for the release type (patch, RC/beta bump,
+  first stable, first pre-release).
+
+The deploy percentage follows the same `X.0.0=30 / X.0.1=70 / else=100` rule as
+the release plan. The command only edits the working copy; the workflow clones
+the repo, fetches the internal version and minimum PHP from `nextcloud/server`,
+regenerates `config/config.php` with the repo's own `make` target, and opens the
+PR. `config.php` is therefore not produced here (and not covered by the tests).
 
 ## How it is built
 
