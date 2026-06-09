@@ -7,10 +7,10 @@ declare(strict_types=1);
 
 namespace Nextcloud\ReleaseTools\Command;
 
-use Nextcloud\ReleaseTools\DueDate;
 use Nextcloud\ReleaseTools\GitHub\KnpGitHubApi;
 use Nextcloud\ReleaseTools\MilestoneUpdater;
 use Nextcloud\ReleaseTools\ReleaseConfig;
+use Nextcloud\ReleaseTools\ReleaseSchedule;
 use Nextcloud\ReleaseTools\Version;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -29,8 +29,9 @@ final class MilestonesUpdateCommand extends Command
             ->addArgument('config', InputArgument::REQUIRED, 'Config file (stableXX.json / master.json)')
             ->addArgument('tag-only', InputArgument::REQUIRED, 'tag-only.json path')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Preview without changing anything')
-            ->addOption('next-due', null, InputOption::VALUE_REQUIRED, 'Due date (YYYY-MM-DD) for the next patch milestone')
-            ->addOption('upcoming-due', null, InputOption::VALUE_REQUIRED, 'Due date (YYYY-MM-DD) for the upcoming patch milestone');
+            ->addOption('schedule', null, InputOption::VALUE_REQUIRED, 'release-schedule.json with milestone due dates')
+            ->addOption('next-due', null, InputOption::VALUE_REQUIRED, 'Override the next patch milestone due date (YYYY-MM-DD)')
+            ->addOption('upcoming-due', null, InputOption::VALUE_REQUIRED, 'Override the upcoming patch milestone due date (YYYY-MM-DD)');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -38,15 +39,19 @@ final class MilestonesUpdateCommand extends Command
         $version = Version::fromTag((string) $input->getArgument('tag'));
         $repos = ReleaseConfig::repos((string) $input->getArgument('config'), (string) $input->getArgument('tag-only'));
 
-        $nextDue = $input->getOption('next-due');
-        $upcomingDue = $input->getOption('upcoming-due');
-        $nextDueOn = $nextDue !== null ? DueDate::toIso((string) $nextDue) : null;
-        $upcomingDueOn = $upcomingDue !== null ? DueDate::toIso((string) $upcomingDue) : null;
+        // Resolve due dates before touching GitHub: a stable release with no
+        // scheduled (or overridden) date fails here, leaving nothing half-done.
+        $schedule = ReleaseSchedule::load(self::optional($input, 'schedule'));
+        $due = $schedule->resolve(
+            $version,
+            self::optional($input, 'next-due'),
+            self::optional($input, 'upcoming-due'),
+        );
 
         $dryRun = (bool) $input->getOption('dry-run');
         $api = KnpGitHubApi::withToken(self::token());
         $updater = new MilestoneUpdater($api, $dryRun);
-        $updater->run($version, $repos, $nextDueOn, $upcomingDueOn);
+        $updater->run($version, $repos, $due['next'], $due['upcoming']);
 
         foreach ($updater->log as $line) {
             $output->writeln($line);
@@ -59,6 +64,13 @@ final class MilestonesUpdateCommand extends Command
             $updater->moved,
         ));
         return Command::SUCCESS;
+    }
+
+    /** A VALUE_REQUIRED option as a non-empty string, or null when absent. */
+    private static function optional(InputInterface $input, string $name): ?string
+    {
+        $value = $input->getOption($name);
+        return $value !== null ? (string) $value : null;
     }
 
     private static function token(): string

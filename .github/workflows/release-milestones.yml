@@ -114,7 +114,9 @@ jobs:
           # GITHUB_TOKEN is scoped to this repo only and used as fallback.
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          ARGS=("${{ env.RELEASE_TAG }}" "${{ steps.config.outputs.config }}" "tag-only.json")
+          # Due dates come from release-schedule.json; a stable release with no
+          # entry there fails (unless overridden via the inputs below).
+          ARGS=("${{ env.RELEASE_TAG }}" "${{ steps.config.outputs.config }}" "tag-only.json" "--schedule" "release-schedule.json")
           if [[ "${{ inputs.dry_run }}" == "true" ]]; then
             ARGS+=("--dry-run")
           fi

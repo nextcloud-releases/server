@@ -53,8 +53,10 @@ tests. Both suites run on every push to `main` and every pull request.
 Two open patch milestones are always kept. A stable `vX.Y.Z` closes its own
 milestone, moves open issues to `X.Y.(Z+1)`, and creates `X.Y.(Z+2)`. The first
 beta of a major opens the *next* major milestone (`vN.0.0beta1` creates
-`Nextcloud N+1`). Full details and examples are in
-[`tools/release/README.md`](tools/release/README.md).
+`Nextcloud N+1`). Due dates for the two kept milestones come from
+`release-schedule.json`: the next (imminent) one is required, so a stable release
+missing it fails; the one after is optional and set only when listed. Full
+details and examples are in [`tools/release/README.md`](tools/release/README.md).
 
 ## Release configuration
 
@@ -66,6 +68,8 @@ One JSON file per major version lists all bundled apps:
 When a new app is added to the release or an existing one is removed, edit the corresponding JSON file.
 
 `tag-only.json` lists repositories that should be tagged on release but are not part of the build (server, 3rdparty, updater, example-files, documentation).
+
+`release-schedule.json` maps milestone titles to due dates (`"Nextcloud 34.0.1": "2026-06-25"`). The milestone step reads it to set due dates for the next and upcoming patch milestones. The next (imminent) milestone is required, so a stable release missing it fails; the one after is optional. Add entries ahead of time.
 
 ## Running manually
 
