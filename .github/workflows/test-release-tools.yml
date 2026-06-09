@@ -18,8 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.3', '8.4']
-    name: test (php ${{ matrix.php-version }})
+        suite: [domain, milestones-update, milestones-audit, tagger]
+    name: test (${{ matrix.suite }})
     defaults:
       run:
         working-directory: tools/release
@@ -31,21 +31,20 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
         with:
-          php-version: ${{ matrix.php-version }}
+          php-version: '8.3'
           coverage: pcov
           tools: composer
 
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      - name: PHPUnit with coverage
-        run: vendor/bin/phpunit --coverage-text --coverage-clover coverage.xml
+      - name: PHPUnit (${{ matrix.suite }})
+        run: vendor/bin/phpunit --testsuite ${{ matrix.suite }} --coverage-text --coverage-clover coverage.xml
 
       - name: Upload coverage to Codecov
-        if: matrix.php-version == '8.3'
         uses: codecov/codecov-action@v5
         with:
           files: tools/release/coverage.xml
-          flags: release-tools
+          flags: ${{ matrix.suite }}
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
