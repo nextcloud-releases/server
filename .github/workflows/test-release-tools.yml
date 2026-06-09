@@ -42,7 +42,7 @@ jobs:
         run: vendor/bin/phpunit --testsuite ${{ matrix.suite }} --coverage-text --coverage-clover coverage.xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
         with:
           files: tools/release/coverage.xml
           flags: ${{ matrix.suite }}
