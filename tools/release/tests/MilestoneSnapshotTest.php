@@ -114,7 +114,7 @@ final class MilestoneSnapshotTest extends TestCase
             $api->seedIssue($repo, 500 + $i, $base);
         }
         (new MilestoneUpdater($api))->run(Version::fromTag('v33.0.4'), [self::SERVER, self::ACTIVITY]);
-        $this->assertMatchesJsonSnapshot('milestones/multi-repo', $this->snapshot('Patch v33.0.4 across two repos', $api));
+        $this->assertMatchesJsonSnapshot('milestones/multi-repo', $this->snapshot('Patch v33.0.4 run over two repos (nextcloud/server and nextcloud/activity): the same flow happens independently in each - move that repo\'s open issue to 33.0.5, close 33.0.4, open 33.0.6 - and milestone numbers are per-repo (server uses 10/11, activity 20/21)', $api));
     }
 
     public function testPrereleaseNoop(): void
@@ -122,6 +122,6 @@ final class MilestoneSnapshotTest extends TestCase
         $api = new FakeGitHubApi();
         $api->seedMilestone(self::SERVER, 10, 'Nextcloud 33.0.2');
         (new MilestoneUpdater($api))->run(Version::fromTag('v33.0.2rc1'), [self::SERVER]);
-        $this->assertMatchesJsonSnapshot('milestones/prerelease-noop', $this->snapshot('Non-first-beta pre-release v33.0.2rc1: nothing happens', $api));
+        $this->assertMatchesJsonSnapshot('milestones/prerelease-noop', $this->snapshot('Ordinary pre-release v33.0.2rc1 (a release candidate that is not a first beta): milestones are only rolled on stable releases and first betas, so this does nothing - no create, close, move or due-date change, and 33.0.2 is left untouched', $api));
     }
 }

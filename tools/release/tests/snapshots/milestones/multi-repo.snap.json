@@ -1,5 +1,5 @@
 {
-    "scenario": "Patch v33.0.4 across two repos",
+    "scenario": "Patch v33.0.4 run over two repos (nextcloud/server and nextcloud/activity): the same flow happens independently in each - move that repo's open issue to 33.0.5, close 33.0.4, open 33.0.6 - and milestone numbers are per-repo (server uses 10/11, activity 20/21)",
     "journal": [
         {
             "action": "move",
