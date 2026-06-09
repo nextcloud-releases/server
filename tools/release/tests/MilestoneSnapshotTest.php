@@ -9,6 +9,7 @@ namespace Nextcloud\ReleaseTools\Tests;
 
 use Nextcloud\ReleaseTools\MilestoneUpdater;
 use Nextcloud\ReleaseTools\Tests\Support\FakeGitHubApi;
+use Nextcloud\ReleaseTools\Tests\Support\Journal;
 use Nextcloud\ReleaseTools\Tests\Support\MatchesSnapshots;
 use Nextcloud\ReleaseTools\Version;
 use PHPUnit\Framework\TestCase;
@@ -32,7 +33,7 @@ final class MilestoneSnapshotTest extends TestCase
 
     private function snapshot(FakeGitHubApi $api): string
     {
-        return $api->journal === [] ? "(no changes)" : implode("\n", $api->journal);
+        return Journal::render($api->journal);
     }
 
     public function testPatchRelease(): void

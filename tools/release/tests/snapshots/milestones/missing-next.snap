@@ -1,4 +1,4 @@
-create	nextcloud/server	Nextcloud 33.0.5	due=-
-move	nextcloud/server	100	11
-close	nextcloud/server	10
-create	nextcloud/server	Nextcloud 33.0.6	due=-
+create milestone "Nextcloud 33.0.5" in nextcloud/server
+move issue #100 to milestone #11 in nextcloud/server
+close milestone #10 in nextcloud/server
+create milestone "Nextcloud 33.0.6" in nextcloud/server

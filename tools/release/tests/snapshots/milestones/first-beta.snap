@@ -1,2 +1,2 @@
-create	nextcloud/server	Nextcloud 36	due=-
-create	nextcloud/activity	Nextcloud 36	due=-
+create milestone "Nextcloud 36" in nextcloud/server
+create milestone "Nextcloud 36" in nextcloud/activity

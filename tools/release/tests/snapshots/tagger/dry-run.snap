@@ -1,4 +1,5 @@
-results:
-  nextcloud/activity	OK	stable34	would create v34.0.1 @ sha-activity
+Results:
+  nextcloud/activity: OK on stable34 (would create v34.0.1 @ sha-activity)
 
-journal:
+Tags written:
+  (none)

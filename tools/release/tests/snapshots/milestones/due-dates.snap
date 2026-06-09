@@ -1,3 +1,3 @@
-setdue	nextcloud/server	11	2026-07-02T00:00:00Z
-close	nextcloud/server	10
-setdue	nextcloud/server	12	2026-08-27T00:00:00Z
+set due date of milestone #11 to 2026-07-02T00:00:00Z in nextcloud/server
+close milestone #10 in nextcloud/server
+set due date of milestone #12 to 2026-08-27T00:00:00Z in nextcloud/server

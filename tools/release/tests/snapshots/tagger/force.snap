@@ -1,6 +1,6 @@
-results:
-  nextcloud/activity	OK	stable34	recreated v34.0.1
-  nextcloud/server	SKIPPED	stable34	already tagged
+Results:
+  nextcloud/activity: OK on stable34 (recreated v34.0.1)
+  nextcloud/server: SKIPPED on stable34 (already tagged)
 
-journal:
-  retag	nextcloud/activity	v34.0.1	sha-activity	force=true
+Tags written:
+  re-tag nextcloud/activity as v34.0.1 (at sha-activity, force=true)

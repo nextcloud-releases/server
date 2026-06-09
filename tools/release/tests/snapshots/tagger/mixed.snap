@@ -1,10 +1,10 @@
-results:
-  nextcloud/activity	OK	stable34	created v34.0.1
-  nextcloud/notes	SKIPPED	stable34	already tagged
-  nextcloud/photos	OK	main	created v34.0.1
-  nextcloud/server	SKIPPED	stable34	already tagged
-  nextcloud/ghost	FAILED		no branch found
+Results:
+  nextcloud/activity: OK on stable34 (created v34.0.1)
+  nextcloud/notes: SKIPPED on stable34 (already tagged)
+  nextcloud/photos: OK on main (created v34.0.1)
+  nextcloud/server: SKIPPED on stable34 (already tagged)
+  nextcloud/ghost: FAILED (no branch found)
 
-journal:
-  tag	nextcloud/activity	v34.0.1	sha-activity
-  tag	nextcloud/photos	v34.0.1	sha-photos
+Tags written:
+  tag nextcloud/activity as v34.0.1 (at sha-activity)
+  tag nextcloud/photos as v34.0.1 (at sha-photos)

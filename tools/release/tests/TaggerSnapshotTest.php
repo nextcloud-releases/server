@@ -9,6 +9,7 @@ namespace Nextcloud\ReleaseTools\Tests;
 
 use Nextcloud\ReleaseTools\RepoTagger;
 use Nextcloud\ReleaseTools\Tests\Support\FakeGitHubApi;
+use Nextcloud\ReleaseTools\Tests\Support\Journal;
 use Nextcloud\ReleaseTools\Tests\Support\MatchesSnapshots;
 use PHPUnit\Framework\TestCase;
 
@@ -27,15 +28,16 @@ final class TaggerSnapshotTest extends TestCase
 
     private function render(array $results, FakeGitHubApi $api): string
     {
-        $lines = ['results:'];
+        $lines = ['Results:'];
         foreach ($results as $r) {
-            $lines[] = sprintf("  %s\t%s\t%s\t%s", $r->repo, $r->status, $r->branch, $r->detail);
+            $branch = $r->branch !== '' ? " on {$r->branch}" : '';
+            $lines[] = sprintf('  %s: %s%s (%s)', $r->repo, $r->status, $branch, $r->detail);
         }
         $lines[] = '';
-        $lines[] = 'journal:';
-        foreach ($api->journal as $j) {
-            $lines[] = '  ' . $j;
-        }
+        $lines[] = 'Tags written:';
+        $lines[] = $api->journal === []
+            ? '  (none)'
+            : '  ' . implode("\n  ", explode("\n", Journal::render($api->journal)));
         return implode("\n", $lines);
     }
 
