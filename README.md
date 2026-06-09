@@ -4,26 +4,43 @@ Release artifacts and automation for Nextcloud server. Branches are synced daily
 
 ## How releases work
 
-A release is driven entirely by its tag (for example `v34.0.4`). Everything else
-- which branch, which repositories, which milestones - is derived from it, so
-there is no per-release bookkeeping to remember.
+You cut a release by pushing one button and typing one tag. Go to Actions >
+"Release pipeline", enter a tag like `v34.0.4`, and run it. That tag is the only
+input: the pipeline reads the version out of it and works out everything else on
+its own - which branch to build from, which repositories to tag, which
+milestones to move, and whether this is an alpha, beta, release candidate or a
+stable release. There is no checklist to follow and no per-release bookkeeping to
+remember.
 
-The pipeline (`release.yml`) runs these reusable workflows:
+Behind that button, `release.yml` runs five smaller workflows:
 
-1. **Tag** (`release-tag.yml`) - tag every release repository at the tip of its
-   release branch.
-2. **Changelog** (`release-changelog.yml`) - generate the changelog and attach
-   it to the GitHub release.
-3. **Build** (`release-build.yml`) - build the archives independently and compare
-   them against the release script's output.
-4. **Milestones** (`release-milestones.yml`) - tidy milestones across all repos
-   (stable releases and first betas only).
-5. **Updater** (`release-updater.yml`) - open a PR to the updater server with the
-   new release config.
+1. **Tag** (`release-tag.yml`) - stamps the tag on every repository that ships in
+   the release (server, 3rdparty, the bundled apps, ...), each at the tip of its
+   release branch. Nothing else starts until the code is tagged.
+2. **Changelog** (`release-changelog.yml`) - finds the previous release,
+   generates the changelog between the two, and attaches it to the GitHub
+   release.
+3. **Build** (`release-build.yml`) - assembles the actual archives: fetch every
+   component, lay them out, strip dev files, stamp `version.php`, sign, and
+   package the `.tar.bz2`/`.zip` with checksums. For now it also compares its
+   output against the old release script to prove they match.
+4. **Updater** (`release-updater.yml`) - once the archives and their signatures
+   exist, opens a pull request to the updater server wiring in the new release
+   (download URLs, signatures, supported-version rules) so clients are offered
+   the update.
+5. **Milestones** (`release-milestones.yml`) - tidies GitHub milestones across all
+   the repos: closes the one you just shipped, moves leftover issues forward, and
+   opens the next ones. Runs only when it makes sense - stable releases and the
+   first beta of a new major - never for ordinary RCs.
 
-Tagging and milestone management are unit-tested PHP commands in
+Steps 2-4 run in sequence (the updater needs the build, the build needs the tag);
+milestones run alongside them, off the tag. If a step fails, the ones after it
+don't run, so the pipeline never leaves a release half-done.
+
+Tagging, milestones and the updater PR are unit-tested PHP commands in
 [`tools/release/`](tools/release/README.md); the build/package/sign steps are
-bash in [`.github/scripts/`](.github/scripts/README.md).
+bash in [`.github/scripts/`](.github/scripts/README.md). Both are covered by
+tests that run on every pull request.
 
 ### Branch and config selection
 
@@ -68,5 +85,4 @@ Once we are confident the output matches, the release script will be retired and
 ## What comes next
 
 - Enable publishing directly from the workflow (retire the release script)
-- Auto-create PRs to the updater server with release configuration
 - Add GPG signatures for archives
