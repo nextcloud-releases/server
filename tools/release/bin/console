@@ -1,0 +1,20 @@
+#!/usr/bin/env php
+<?php
+
+// SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+// SPDX-License-Identifier: MIT
+
+declare(strict_types=1);
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use Nextcloud\ReleaseTools\Command\MilestonesAuditCommand;
+use Nextcloud\ReleaseTools\Command\MilestonesUpdateCommand;
+use Nextcloud\ReleaseTools\Command\RepoTagCommand;
+use Symfony\Component\Console\Application;
+
+$app = new Application('nextcloud release-tools');
+$app->add(new MilestonesUpdateCommand());
+$app->add(new MilestonesAuditCommand());
+$app->add(new RepoTagCommand());
+$app->run();

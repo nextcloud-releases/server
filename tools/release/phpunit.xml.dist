@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true">
+    <testsuites>
+        <!-- Pure domain logic (no I/O). -->
+        <testsuite name="domain">
+            <file>tests/VersionTest.php</file>
+            <file>tests/MilestonePlanTest.php</file>
+            <file>tests/DueDateTest.php</file>
+            <file>tests/RepoListTest.php</file>
+            <file>tests/AuditExpectationTest.php</file>
+            <file>tests/TagPolicyTest.php</file>
+            <file>tests/ReleaseConfigTest.php</file>
+        </testsuite>
+        <!-- Milestone mover: close/create/move + due dates. -->
+        <testsuite name="milestones-update">
+            <file>tests/MilestoneUpdaterTest.php</file>
+        </testsuite>
+        <!-- Milestone consistency audit. -->
+        <testsuite name="milestones-audit">
+            <file>tests/MilestoneAuditorTest.php</file>
+        </testsuite>
+        <!-- Repository tagging. -->
+        <testsuite name="tagger">
+            <file>tests/RepoTaggerTest.php</file>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+</phpunit>

@@ -20,6 +20,11 @@ on:
         required: false
         type: boolean
         default: false
+      dry_run:
+        description: 'Preview tagging without creating tags'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -46,6 +51,16 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install release-tools
+        run: composer install --no-interaction --no-progress --no-dev
+        working-directory: tools/release
 
       - name: Determine branch and config
         id: config
@@ -81,80 +96,22 @@ jobs:
 
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "config=$CONFIG" >> "$GITHUB_OUTPUT"
-          echo "::notice::Tagging repos from $CONFIG + tag-only.json at $BRANCH HEAD → $TAG"
+          echo "::notice::Tagging repos from $CONFIG + tag-only.json at $BRANCH HEAD -> $TAG"
 
       - name: Tag all repositories
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          TAG="${{ env.RELEASE_TAG }}"
-          BRANCH="${{ steps.config.outputs.branch }}"
-          CONFIG="${{ steps.config.outputs.config }}"
-          FORCE_FLAG=""
+          ARGS=(
+            "${{ env.RELEASE_TAG }}"
+            "${{ steps.config.outputs.branch }}"
+            "${{ steps.config.outputs.config }}"
+            "tag-only.json"
+          )
           if [ "${{ inputs.force }}" = "true" ]; then
-            FORCE_FLAG="--force"
+            ARGS+=("--force")
           fi
-
-          # Merge app repos from build config + non-build repos from tag-only.json
-          REPOS=$(jq -r '.[].repo' "$CONFIG")
-          if [ -f "tag-only.json" ]; then
-            REPOS=$(echo "$REPOS"; jq -r '.[]' "tag-only.json")
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS+=("--dry-run")
           fi
-          REPOS=$(echo "$REPOS" | sort -u)
-
-          SUCCESS=0
-          SKIPPED=0
-          FAILED=0
-
-          {
-            echo "## Tag results: $TAG"
-            echo ""
-            echo "| Repository | Branch | Status |"
-            echo "|---|---|---|"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          while read -r repo; do
-            [ -z "$repo" ] && continue
-
-            # Resolve branch: try stable branch, fall back to repo default
-            REPO_BRANCH="$BRANCH"
-            if ! gh api "repos/$repo/git/ref/heads/$REPO_BRANCH" &>/dev/null; then
-              REPO_BRANCH=$(gh api "repos/$repo" --jq '.default_branch' 2>/dev/null) || REPO_BRANCH=""
-            fi
-
-            if [ -z "$REPO_BRANCH" ]; then
-              echo "$repo: no branch found"
-              echo "| \`$repo\` | - | no branch found |" >> "$GITHUB_STEP_SUMMARY"
-              FAILED=$((FAILED + 1))
-              continue
-            fi
-
-            echo -n "$repo@$REPO_BRANCH → $TAG ... "
-            RESULT=$(bash .github/scripts/tag-repo.sh "$repo" "$REPO_BRANCH" "$TAG" $FORCE_FLAG)
-            echo "$RESULT"
-
-            case "$RESULT" in
-              OK*)
-                echo "| \`$repo\` | $REPO_BRANCH | tagged |" >> "$GITHUB_STEP_SUMMARY"
-                SUCCESS=$((SUCCESS + 1))
-                ;;
-              SKIPPED*)
-                echo "| \`$repo\` | $REPO_BRANCH | already tagged |" >> "$GITHUB_STEP_SUMMARY"
-                SKIPPED=$((SKIPPED + 1))
-                ;;
-              *)
-                echo "| \`$repo\` | $REPO_BRANCH | **failed** |" >> "$GITHUB_STEP_SUMMARY"
-                FAILED=$((FAILED + 1))
-                ;;
-            esac
-          done <<< "$REPOS"
-
-          {
-            echo ""
-            echo "**Tagged: $SUCCESS | Skipped: $SKIPPED | Failed: $FAILED**"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          if [ "$FAILED" -gt 0 ]; then
-            echo "::error::$FAILED repos failed to tag"
-            exit 1
-          fi
+          php tools/release/bin/console repo:tag "${ARGS[@]}"
