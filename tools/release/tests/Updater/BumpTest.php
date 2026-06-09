@@ -51,6 +51,10 @@ final class BumpTest extends TestCase
     private function freshBase(): string
     {
         $work = sys_get_temp_dir() . '/bumptest-' . bin2hex(random_bytes(4));
+        // Create the root explicitly: the copy loop only mkdir's subdirs, so a
+        // root-level file yielded before any directory (iterator order is
+        // filesystem-dependent) would otherwise copy into a missing parent.
+        mkdir($work, 0o777, true);
         $src = self::FIXTURES . '/base';
         $it = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($src, \FilesystemIterator::SKIP_DOTS),
