@@ -4,26 +4,42 @@ Release artifacts and automation for Nextcloud server. Branches are synced daily
 
 ## How releases work
 
-A release is driven entirely by its tag (for example `v34.0.4`). Everything else
-- which branch, which repositories, which milestones - is derived from it, so
-there is no per-release bookkeeping to remember.
+A release is fully determined by its tag (`vMAJOR.MINOR.PATCH[suffix]`). The
+entry point is the `release.yml` workflow (`workflow_dispatch`, single `tag`
+input). It parses the version and derives the release branch, the repository set,
+the milestone actions, and the release channel from it; there is no per-release
+configuration beyond the tag and the per-major app list. `release.yml` dispatches
+five reusable workflows:
 
-The pipeline (`release.yml`) runs these reusable workflows:
+1. **Tag** (`release-tag.yml`): creates the tag on every repository in the release
+   set at the tip of the resolved branch, through the GitHub git-refs API (no
+   clone). Server repositories are never re-tagged. Gates the rest of the
+   pipeline.
+2. **Changelog** (`release-changelog.yml`): resolves the previous tag, generates
+   the changelog for that range, and attaches it to the GitHub release. Depends
+   on Tag.
+3. **Build** (`release-build.yml`): fetches each component, assembles the
+   `nextcloud/` tree, strips dev files, rewrites `version.php`, signs, and
+   produces the `.tar.bz2`/`.zip` plus checksums. Also diffs its output against
+   the legacy release script. Depends on Tag and Changelog.
+4. **Updater** (`release-updater.yml`): fetches the internal version and minimum
+   PHP, applies the release to a checkout of the updater server
+   (`releases.json`, `major_versions.json`, Behat features), regenerates config
+   via `make`, and opens a pull request. Depends on Build.
+5. **Milestones** (`release-milestones.yml`): updates and audits milestones across
+   the release set. Runs off Tag, in parallel with Changelog and Build, and only
+   for stable releases and first betas (`…beta1`); alphas, RCs, and later betas
+   are skipped.
 
-1. **Tag** (`release-tag.yml`) - tag every release repository at the tip of its
-   release branch.
-2. **Changelog** (`release-changelog.yml`) - generate the changelog and attach
-   it to the GitHub release.
-3. **Build** (`release-build.yml`) - build the archives independently and compare
-   them against the release script's output.
-4. **Milestones** (`release-milestones.yml`) - tidy milestones across all repos
-   (stable releases and first betas only).
-5. **Updater** (`release-updater.yml`) - open a PR to the updater server with the
-   new release config.
+`Tag -> Changelog -> Build -> Updater` is a linear dependency chain; Milestones
+branches off Tag. A failed job blocks its dependents, so the pipeline cannot
+publish a partial release.
 
-Tagging and milestone management are unit-tested PHP commands in
-[`tools/release/`](tools/release/README.md); the build/package/sign steps are
-bash in [`.github/scripts/`](.github/scripts/README.md).
+Tag, Milestones, and Updater are PHP commands in
+[`tools/release/`](tools/release/README.md) with unit, snapshot, and byte-parity
+tests. Build, package, and sign are bash in
+[`.github/scripts/`](.github/scripts/README.md) with hermetic snapshot and unit
+tests. Both suites run on every push to `main` and every pull request.
 
 ### Branch and config selection
 
@@ -44,8 +60,8 @@ beta of a major opens the *next* major milestone (`vN.0.0beta1` creates
 
 One JSON file per major version lists all bundled apps:
 
-- `stable32.json`, `stable33.json` - 23 apps
-- `stable34.json`, `master.json` - 25 apps (+files_lock, +office)
+- `stable32.json`, `stable33.json`: 23 apps
+- `stable34.json`, `master.json`: 25 apps (+files_lock, +office)
 
 When a new app is added to the release or an existing one is removed, edit the corresponding JSON file.
 
@@ -59,14 +75,34 @@ When a new app is added to the release or an existing one is removed, edit the c
 
 **Update milestones**: Actions > "Update milestones on release" > enter tag. Use dry-run to preview. Runs automatically for stable releases and first betas. Check "audit only" to verify consistency without making changes.
 
-## Where we are
+## Current state and target
 
-The old release script still creates releases and uploads to the download server. This workflow runs alongside it to validate that both produce the same result.
+Target: the pipeline owns the full release end to end from a single tag,
+including publishing to the download server, and the legacy release script is
+removed.
 
-Once we are confident the output matches, the release script will be retired and this workflow will take over publishing.
+Current state: the workflow runs in parallel with the legacy release script
+rather than replacing it. The script remains the source of the published
+artifacts and the download-server upload; the workflow rebuilds the same release
+and diffs its output byte for byte to establish parity. Publishing from the
+workflow is not yet enabled.
 
-## What comes next
+The cutover is staged because a release spans roughly 30 repositories, code
+signing, and the update channel consumed by every server. The migration moves
+logic out of untested shell into tested code, keeps test artifacts diffable, and
+runs the suites on every change, so each piece is verified before publishing is
+handed over.
 
-- Enable publishing directly from the workflow (retire the release script)
-- Auto-create PRs to the updater server with release configuration
-- Add GPG signatures for archives
+### Remaining before the legacy script can be retired
+
+- **Publishing from the workflow.** Build and signing are implemented; upload to
+  the download server is not. This is the final cutover step.
+- **Build parity.** Continue diffing workflow output against the legacy script
+  across all release shapes (stable, RC, first beta, new major).
+- **Workflow-glue hardening.** The shell in the workflow steps (version-file
+  fetch and parse, clone, `make`, PR creation) is untested and has known issues,
+  including a `git push --force` without a divergence check and a token passed
+  through a git URL.
+- **Changelog generator tests.** The PHP changelog tool has no unit tests.
+- **GPG signatures.** Published archives are not GPG-signed for independent
+  verification.
