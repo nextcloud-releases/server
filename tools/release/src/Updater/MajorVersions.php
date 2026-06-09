@@ -24,7 +24,7 @@ final class MajorVersions
         if (array_key_exists($key, $majors)) {
             return $majors;
         }
-        // Prepend, matching jq's `{($m): …} + .`.
+        // Prepend, matching jq's `{($m): ...} + .`.
         return [$key => ['minPHP' => $minPhp]] + $majors;
     }
 
