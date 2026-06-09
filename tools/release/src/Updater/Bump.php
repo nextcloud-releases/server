@@ -37,9 +37,18 @@ final class Bump
         $oldKey = ReleasesJson::findOldKey($releases, $plan->major, $plan->releaseType);
 
         // A pre-release with no prior entry is the first pre-release of a new major.
+        // A patch/first-stable with no entry to replace is an error: proceeding
+        // with empty "old" values would corrupt the feature files (the empty
+        // version string matches the """ doc-string delimiters).
         $type = $plan->releaseType;
-        if ($oldKey === null && $type === ReleasePlan::TYPE_PRERELEASE) {
-            $type = 'first_prerelease';
+        if ($oldKey === null) {
+            if ($type === ReleasePlan::TYPE_PRERELEASE) {
+                $type = 'first_prerelease';
+            } else {
+                throw new \RuntimeException(
+                    "No existing entry found for major {$plan->major} (type={$type}) in releases.json",
+                );
+            }
         }
 
         // Old values (read before mutating).
