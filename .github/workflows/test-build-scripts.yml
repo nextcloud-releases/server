@@ -7,13 +7,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - '.github/scripts/**'
-      - 'tests/build-scripts/**'
   pull_request:
-    paths:
-      - '.github/scripts/**'
-      - 'tests/build-scripts/**'
 
 permissions:
   contents: read
