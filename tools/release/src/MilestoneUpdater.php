@@ -150,6 +150,11 @@ final class MilestoneUpdater
 
     private function close(string $repo, Milestone $current): void
     {
+        // Already closed (e.g. re-running a shipped release to fix due dates):
+        // nothing to do. Don't call the API, count it, or claim we closed it.
+        if ($current->state === 'closed') {
+            return;
+        }
         $this->closed++;
         if ($this->dryRun) {
             $this->log[] = "  {$repo}: would close '{$current->title}'";
