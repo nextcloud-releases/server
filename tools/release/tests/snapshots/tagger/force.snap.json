@@ -1,5 +1,4 @@
 {
-    "scenario": "Tag v34.0.1 with --force: a normal repo is recreated, the server repo is still skipped",
     "results": [
         {
             "repo": "nextcloud/activity",

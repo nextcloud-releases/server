@@ -1,5 +1,4 @@
 {
-    "scenario": "Tag v34.0.1 in dry-run: reports what it would do, writes nothing",
     "results": [
         {
             "repo": "nextcloud/activity",

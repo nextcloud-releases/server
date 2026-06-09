@@ -21,8 +21,10 @@ use PHPUnit\Framework\TestCase;
  * Why: alongside the focused assertions in MilestoneUpdaterTest, these pin the
  * entire mutation sequence as a reviewable artifact - the same "scenario ->
  * expected" feel as the bash harness, so a behaviour change shows up as a
- * readable JSON snapshot diff. Each snapshot is {scenario, journal[]} where
- * every journal entry is a structured action. Update with UPDATE_SNAPSHOTS=1.
+ * readable JSON snapshot diff. Each snapshot is {journal[], milestones{}} where
+ * every journal entry is a structured action; the file is identified by its id
+ * (the snapshot name) and the human scenario lives only in the test. Update with
+ * UPDATE_SNAPSHOTS=1.
  */
 final class MilestoneSnapshotTest extends TestCase
 {
@@ -31,26 +33,37 @@ final class MilestoneSnapshotTest extends TestCase
     private const SERVER = 'nextcloud/server';
     private const ACTIVITY = 'nextcloud/activity';
 
-    /** @return array{scenario: string, journal: list<array<string, mixed>>, milestones: array<string, list<array<string, mixed>>>} */
+    /**
+     * Build the snapshot data. $scenario is the human description kept at the
+     * call site so the test reads clearly; it is intentionally NOT stored in the
+     * snapshot - each golden file is identified by its id (the name passed to
+     * assertMatchesJsonSnapshot), so rewording a description never churns a file.
+     *
+     * journal = the mutations that ran; milestones = the resulting state, so a
+     * snapshot shows both what changed and that the expected milestones exist
+     * afterwards (e.g. updated in place rather than recreated).
+     *
+     * @return array{journal: list<array<string, mixed>>, milestones: array<string, list<array<string, mixed>>>}
+     */
     private function snapshot(string $scenario, FakeGitHubApi $api): array
     {
+        unset($scenario); // documents the call site only; see above.
         $milestones = [];
         foreach ($api->milestoneState() as $repo => $list) {
+            // openIssues is omitted: the updater drives off the issue->milestone
+            // map (openIssueNumbers), not this seeded counter, so it would show
+            // a stale value here and only confuse the snapshot.
             $milestones[$repo] = array_map(
                 static fn ($m) => [
                     'number' => $m->number,
                     'title' => $m->title,
                     'state' => $m->state,
-                    'openIssues' => $m->openIssues,
                     'due' => $m->dueOn,
                 ],
                 $list,
             );
         }
-        // journal = the mutations that ran; milestones = the resulting state, so
-        // a snapshot shows both what changed and that the expected milestones
-        // exist afterwards (e.g. updated in place rather than recreated).
-        return ['scenario' => $scenario, 'journal' => $api->journal, 'milestones' => $milestones];
+        return ['journal' => $api->journal, 'milestones' => $milestones];
     }
 
     public function testPatchRelease(): void

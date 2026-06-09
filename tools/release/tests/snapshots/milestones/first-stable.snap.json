@@ -1,5 +1,4 @@
 {
-    "scenario": "First stable v34.0.0: close the Nextcloud 34 milestone, open 34.0.1 and 34.0.2",
     "journal": [
         {
             "action": "create",
@@ -25,21 +24,18 @@
                 "number": 20,
                 "title": "Nextcloud 34",
                 "state": "closed",
-                "openIssues": 0,
                 "due": null
             },
             {
                 "number": 21,
                 "title": "Nextcloud 34.0.1",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             },
             {
                 "number": 22,
                 "title": "Nextcloud 34.0.2",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             }
         ]

@@ -1,5 +1,4 @@
 {
-    "scenario": "Patch v33.0.4 run over two repos (nextcloud/server and nextcloud/activity): the same flow happens independently in each - move that repo's open issue to 33.0.5, close 33.0.4, open 33.0.6 - and milestone numbers are per-repo (server uses 10/11, activity 20/21)",
     "journal": [
         {
             "action": "move",
@@ -42,21 +41,18 @@
                 "number": 10,
                 "title": "Nextcloud 33.0.4",
                 "state": "closed",
-                "openIssues": 1,
                 "due": null
             },
             {
                 "number": 11,
                 "title": "Nextcloud 33.0.5",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             },
             {
                 "number": 22,
                 "title": "Nextcloud 33.0.6",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             }
         ],
@@ -65,21 +61,18 @@
                 "number": 20,
                 "title": "Nextcloud 33.0.4",
                 "state": "closed",
-                "openIssues": 1,
                 "due": null
             },
             {
                 "number": 21,
                 "title": "Nextcloud 33.0.5",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             },
             {
                 "number": 23,
                 "title": "Nextcloud 33.0.6",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             }
         ]

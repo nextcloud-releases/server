@@ -1,5 +1,4 @@
 {
-    "scenario": "Ordinary pre-release v33.0.2rc1 (a release candidate that is not a first beta): milestones are only rolled on stable releases and first betas, so this does nothing - no create, close, move or due-date change, and 33.0.2 is left untouched",
     "journal": [],
     "milestones": {
         "nextcloud/server": [
@@ -7,7 +6,6 @@
                 "number": 10,
                 "title": "Nextcloud 33.0.2",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             }
         ]

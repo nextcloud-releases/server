@@ -19,21 +19,26 @@ use PHPUnit\Framework\TestCase;
  * Why: pins the whole tag run (status + chosen branch + the create/recreate/skip
  * journal) as one reviewable JSON artifact, covering create, skip-existing,
  * force-recreate, server-repo immutability, default-branch fallback and
- * no-branch failure together. Each snapshot is {scenario, results[], journal[]}.
- * Update with UPDATE_SNAPSHOTS=1.
+ * no-branch failure together. Each snapshot is {results[], journal[]}; the file
+ * is identified by its id (the snapshot name) and the human scenario lives only
+ * in the test. Update with UPDATE_SNAPSHOTS=1.
  */
 final class TaggerSnapshotTest extends TestCase
 {
     use MatchesSnapshots;
 
     /**
+     * $scenario is the human description kept at the call site for readability;
+     * it is intentionally not stored in the snapshot (the file is identified by
+     * its id), so rewording it never churns a golden file.
+     *
      * @param list<\Nextcloud\ReleaseTools\TagResult> $results
-     * @return array{scenario: string, results: list<array<string, mixed>>, journal: list<array<string, mixed>>}
+     * @return array{results: list<array<string, mixed>>, journal: list<array<string, mixed>>}
      */
     private function render(string $scenario, array $results, FakeGitHubApi $api): array
     {
+        unset($scenario); // documents the call site only; see above.
         return [
-            'scenario' => $scenario,
             'results' => array_map(
                 static fn ($r) => [
                     'repo' => $r->repo,

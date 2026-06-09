@@ -1,5 +1,4 @@
 {
-    "scenario": "First beta v35.0.0beta1: open the next major milestone Nextcloud 36 in each repo",
     "journal": [
         {
             "action": "create",
@@ -20,7 +19,6 @@
                 "number": 1,
                 "title": "Nextcloud 36",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             }
         ],
@@ -29,7 +27,6 @@
                 "number": 2,
                 "title": "Nextcloud 36",
                 "state": "open",
-                "openIssues": 0,
                 "due": null
             }
         ]

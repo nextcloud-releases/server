@@ -1,5 +1,4 @@
 {
-    "scenario": "Tag v34.0.1 across a mixed set: new, already-tagged, default-branch fallback, server (immutable), and a repo with no branch",
     "results": [
         {
             "repo": "nextcloud/activity",
