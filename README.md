@@ -4,14 +4,41 @@ Release artifacts and automation for Nextcloud server. Branches are synced daily
 
 ## How releases work
 
-When a release is published on this repository, three things happen in parallel:
+A release is driven entirely by its tag (for example `v34.0.4`). Everything else
+- which branch, which repositories, which milestones - is derived from it, so
+there is no per-release bookkeeping to remember.
 
-1. **Changelog** is generated and attached to the release
-2. **All app repositories** get tagged at their stable branch HEAD
-3. **Release archives** are built independently and compared against the release script output
-4. **Milestones** are updated across all repos (stable releases and first betas only)
+The pipeline (`release.yml`) runs these reusable workflows:
 
-The tagger and builder can also be run manually for re-tagging or testing.
+1. **Tag** (`release-tag.yml`) - tag every release repository at the tip of its
+   release branch.
+2. **Changelog** (`release-changelog.yml`) - generate the changelog and attach
+   it to the GitHub release.
+3. **Build** (`release-build.yml`) - build the archives independently and compare
+   them against the release script's output.
+4. **Milestones** (`release-milestones.yml`) - tidy milestones across all repos
+   (stable releases and first betas only).
+5. **Updater** (`release-updater.yml`) - open a PR to the updater server with the
+   new release config.
+
+Tagging and milestone management are unit-tested PHP commands in
+[`tools/release/`](tools/release/README.md); the build/package/sign steps are
+bash in [`.github/scripts/`](.github/scripts/README.md).
+
+### Branch and config selection
+
+- A `.0.0` **alpha/beta of a new major** comes from `master` and uses
+  `master.json`.
+- **Everything else** (stable releases and RCs) comes from `stableN` and uses
+  `stableN.json`.
+
+### Milestone rules in short
+
+Two open patch milestones are always kept. A stable `vX.Y.Z` closes its own
+milestone, moves open issues to `X.Y.(Z+1)`, and creates `X.Y.(Z+2)`. The first
+beta of a major opens the *next* major milestone (`vN.0.0beta1` creates
+`Nextcloud N+1`). Full details and examples are in
+[`tools/release/README.md`](tools/release/README.md).
 
 ## Release configuration
 
@@ -26,7 +53,7 @@ When a new app is added to the release or an existing one is removed, edit the c
 
 ## Running manually
 
-**Re-tag a release**: Actions > "Tag all repositories" > enter tag (e.g., `v34.0.1`). Check "force" to overwrite existing tags.
+**Re-tag a release**: Actions > "Tag all repositories" > enter tag (e.g., `v34.0.1`). Check "force" to overwrite existing tags (server repos are never re-tagged), or "dry run" to preview.
 
 **Rebuild a release**: Actions > "Build and compare release" > enter tag. Compares the result against the release script's archives on the same GitHub release.
 

@@ -2,107 +2,126 @@
   - SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
   - SPDX-License-Identifier: MIT
 -->
-# Release tools (PHP)
+# Release tools
 
-Unit-tested PHP for the GitHub-API parts of the release automation, migrated
-from the bash scripts in `.github/scripts/`. The logic-heavy, API-driven steps
-(milestones, tagging) live here where they get real types, return values and
-PHPUnit coverage. The filesystem/packaging scripts stay in bash.
+The release automation that talks to the GitHub API lives here, as small PHP
+commands with real unit tests. It used to be bash in `.github/scripts/`; the
+parts that parse versions, walk the API and make decisions moved here where they
+are far easier to read and to test. The parts that shuffle files around (build,
+package, sign) are still bash, because that is what bash is good at.
 
-## Commands
+There are three commands today:
 
-```bash
-cd tools/release && composer install
-GH_TOKEN=... php bin/console <command>
-```
-
-| command | replaces | what |
-|---|---|---|
-| `milestones:update <tag> <config.json> <tag-only.json> [--dry-run] [--next-due Y-M-D] [--upcoming-due Y-M-D]` | `update-milestones.sh` | close/create milestones, move issues |
-| `milestones:audit <config.json> <tag-only.json>` | `audit-milestones.sh` | report milestone inconsistencies (read-only) |
-| `repo:tag <tag> <branch> <config.json> <tag-only.json> [--force] [--dry-run]` | `tag-repo.sh` | tag all release repos at a branch |
-
-`GH_TOKEN` (or `GITHUB_TOKEN`) must be a token with write access to the org
-repos - the same `RELEASE_TOKEN` the workflows already pass.
-
-## Release auto-logic
-
-This is the behaviour the workflows encode. It is intentionally rule-based so a
-human rarely has to think about milestone/tag bookkeeping.
-
-### Config & branch selection (from the tag)
-
-- **Alpha/beta of a new major** (`vN.0.0alpha*` / `vN.0.0beta*`) -> branch
-  `master`, config `master.json`.
-- **Everything else** (stable `vN.M.P`, and RCs) -> branch `stableN`, config
-  `stableN.json`.
-- The repo list is the **union** of the config file (objects with `.repo`) and
-  `tag-only.json` (plain strings), sorted and de-duplicated.
-
-### Milestones (`milestones:update`)
-
-The invariant: **two patch milestones stay open** at all times.
-
-- **Stable release `vX.Y.Z`** (not a pre-release):
-  1. find the released milestone - `Nextcloud X.Y.Z`, or the short `Nextcloud X`
-     for an initial `X.0.0`;
-  2. ensure `Nextcloud X.Y.(Z+1)` exists (create if missing) - the **next** patch;
-  3. **move all open issues** from the released milestone to the next one
-     (gathered up front, so none are skipped; pull requests are left alone);
-  4. **close** the released milestone;
-  5. ensure `Nextcloud X.Y.(Z+2)` exists (create if missing) - the **upcoming** patch.
-  - `--next-due` / `--upcoming-due` set the due date on the next / upcoming
-    milestone respectively. The date is applied whether the milestone is created
-    now **or already exists**, so re-running fixes stale/missing dates and is
-    idempotent.
-- **First beta `vN.0.0beta1`**: only **create `Nextcloud N+1`** (the next major)
-  where missing. `Nextcloud N` already exists from the previous cycle. No close,
-  no move, no due date.
-- **Any other pre-release** (alpha/rc, later betas): **no-op**.
-- `--dry-run` reads state and logs "Would ..." but changes nothing.
-
-### Audit (`milestones:audit`)
-
-Read-only. Derives the major from the config name (`stableN` -> N; `master` ->
-highest released major + 1), finds the latest stable release of that major, and
-flags: released milestone still open, missing/closed next or upcoming, an
-upcoming milestone without a due date, and orphaned patch milestones (open but at
-or below the released patch). Exits non-zero if anything is flagged. If no stable
-release exists yet for the major, it skips.
-
-### Tags (`repo:tag`)
-
-- Per repo, resolve the tag target: prefer the release `branch` (stableN/master),
-  fall back to the repo's **default branch**; fail that repo if neither exists.
-- Create the tag as a **lightweight ref** via the git-refs API (same result as
-  the old `gh release create`, no clone/push).
-- If the tag already exists: **skip**, unless `--force` (then recreate) - but the
-  **server repos are immutable**: `nextcloud/server` and
-  `nextcloud-releases/server` are never re-tagged even with `--force`.
-- `--dry-run` reports what it would do without writing.
-
-## Architecture & testing
-
-Three layers, so the logic is testable without touching GitHub:
-
-- **Domain** (`src/Version.php`, `MilestonePlan`, `DueDate`, `RepoList`,
-  `AuditExpectation`, `TagPolicy`) - pure, no I/O.
-- **Service** (`MilestoneUpdater`, `MilestoneAuditor`, `RepoTagger`) - the
-  orchestration, talking to a `GitHub\GitHubApi` interface.
-- **Command** (`src/Command/`) - thin Symfony Console glue; builds the real
-  `GitHub\KnpGitHubApi` (knplabs/github-api) from `GH_TOKEN`.
-
-Tests run the services against `GitHub\FakeGitHubApi` - an in-memory GitHub that
-records every mutation to a **journal**, so a test asserts the exact sequence of
-create/close/move/setdue/tag calls (the PHP equivalent of the old
-`fake-gh.sh` + journal). Only the thin `KnpGitHubApi` adapter touches the
-network; it's verified by dry-running the workflows. Each test file documents
-what it covers and why in its class docblock.
-
-## Develop
+- **`milestones:update`** - after a release, tidy up the milestones.
+- **`milestones:audit`** - check the milestones look right (read-only).
+- **`repo:tag`** - tag all the release repositories.
 
 ```bash
 cd tools/release
 composer install
-composer test
+GH_TOKEN=<a token with write access to the org> php bin/console milestones:update --help
 ```
+
+The token is the same `RELEASE_TOKEN` the workflows already use. In CI you never
+run these by hand; the release workflows do.
+
+## How a release drives the tooling
+
+You give it a tag (like `v34.0.4`) and it works everything else out. The rules
+below are deliberately mechanical so nobody has to remember the bookkeeping.
+
+### Which repos and which branch
+
+From the tag, the workflow picks:
+
+- an **alpha/beta of a brand-new major** (`v35.0.0beta3`) -> the `master` branch
+  and `master.json`;
+- **anything else** (stable releases and RCs) -> the `stableN` branch and
+  `stableN.json`.
+
+The list of repositories to act on is the config file plus `tag-only.json`
+(repos that are tagged but not built), merged and de-duplicated.
+
+### Milestones (`milestones:update`)
+
+The golden rule: **there are always two open patch milestones**, so people
+always have somewhere to file the next two patch releases.
+
+**A stable release**, say `v33.0.4`:
+
+1. find the `Nextcloud 33.0.4` milestone (for a `.0.0` it may be the short
+   `Nextcloud 34` form instead);
+2. make sure `Nextcloud 33.0.5` exists - that is where issues go next;
+3. move every open issue from 33.0.4 to 33.0.5 (pull requests are left alone);
+4. close 33.0.4;
+5. make sure `Nextcloud 33.0.6` exists, so two patch milestones stay open.
+
+You can hand it due dates for those two milestones:
+
+```bash
+php bin/console milestones:update v33.0.4 stable33.json tag-only.json \
+  --next-due 2026-07-02 --upcoming-due 2026-08-27
+```
+
+The date is applied whether the milestone is brand new or already there, so
+re-running with the same dates is harmless and also fixes any wrong dates.
+
+**The first beta of a new major** (`v34.0.0beta1`) is special: it only creates
+the *next* major milestone, `Nextcloud 35`. `Nextcloud 34` already exists from
+the previous cycle, so there is nothing else to do.
+
+**Any other pre-release** (alphas, RCs, later betas) does nothing.
+
+Add `--dry-run` to see exactly what it would do without touching anything.
+
+### Audit (`milestones:audit`)
+
+A read-only health check. It figures out the major from the config name, looks
+up the latest stable release, and complains if:
+
+- the released milestone is still open,
+- the next or upcoming milestone is missing or closed,
+- the upcoming milestone has no due date,
+- an old patch milestone is still open (an "orphan").
+
+It changes nothing and exits non-zero if it finds problems. If the major has no
+stable release yet, it simply skips.
+
+### Tags (`repo:tag`)
+
+For each repository it tags the tip of the release branch (falling back to the
+repo's default branch if that branch does not exist). The tag is a plain
+lightweight tag created through the API - no cloning, no pushing.
+
+If a tag already exists it is left alone, unless you pass `--force`. The one
+exception: **the server repositories are never re-tagged**, even with `--force`,
+because a published release tag must never move.
+
+## How it is built
+
+Three thin layers, so the interesting logic never needs the network to be
+tested:
+
+- **domain** - pure functions and value objects (version parsing, milestone
+  names, the due-date format, the tag rules);
+- **services** - the actual steps, talking to a small `GitHubApi` interface;
+- **commands** - Symfony Console wrappers that wire it together and build the
+  real GitHub client (`knplabs/github-api`) from `GH_TOKEN`.
+
+Tests run the services against an in-memory fake GitHub that records every change
+it is asked to make, so a test can check the exact sequence of
+create/close/move/tag calls. Only the thin real client touches the network, and
+that path is checked by dry-running the workflows. Each test file says, at the
+top, what it covers and why.
+
+## Working on it
+
+```bash
+cd tools/release
+composer install
+composer test                            # all suites
+vendor/bin/phpunit --testsuite tagger    # one area
+```
+
+CI runs the suites split by area (domain, milestones-update, milestones-audit,
+tagger) and reports coverage.
