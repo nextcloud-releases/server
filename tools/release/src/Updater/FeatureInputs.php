@@ -30,6 +30,10 @@ final class FeatureInputs
         public readonly string $prevStableInternal,
         public readonly string $phpVersion,
         public readonly string $eolDate,
+        // Rollout percentage of this release. Drives the staged-rollout
+        // scenario's mtime (an install is offered the update iff the last two
+        // digits of its mtime are <= deploy; see updater_server Response.php).
+        public readonly int $deploy = 100,
         // The in-flight RC a stable patch promotes (patch_promote_rc only):
         // these describe the pre-release being retired from the beta channel,
         // distinct from the old* fields, which describe the stable being

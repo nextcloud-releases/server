@@ -102,7 +102,7 @@ Feature: Testing the update scenario of beta releases
 
   Scenario: Updating Nextcloud latest 34 to 35 on the beta channel
     Given There is a release with channel "beta"
-    And The received version is "null"
+    And The received version is "34.0.0.11"
     And The received PHP version is "8.2.0"
     And the installation mtime is "11"
     When The request is sent

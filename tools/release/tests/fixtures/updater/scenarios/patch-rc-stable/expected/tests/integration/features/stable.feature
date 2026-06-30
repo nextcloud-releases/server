@@ -124,3 +124,11 @@ Feature: Testing the update scenario of stable releases
     TestZIPSig000000000000000000000000000000000000000000000000000000
     TestZIPSig000000000000==
     """
+
+  Scenario: Not updating Nextcloud latest 33 to 34 on the stable channel (staged rollout)
+    Given There is a release with channel "stable"
+    And The received version is "33.0.5.1"
+    And The received PHP version is "8.2.0"
+    And the installation mtime is "71"
+    When The request is sent
+    Then The response is empty

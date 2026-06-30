@@ -87,6 +87,25 @@ final class ReleasesJsonTest extends TestCase
         $this->assertSame('34.0.0 beta 5', ReleasesJson::findPrereleaseForBase(['34.0.0 beta 5' => []], '34.0.0'));
     }
 
+    public function testFindLatestForMajorPrefersInFlightPrerelease(): void
+    {
+        // A new major's first beta wants the prev major's latest entry, even an RC.
+        $releases = ['33.0.2' => [], '33.0.3 RC2' => []];
+        $this->assertSame('33.0.3 RC2', ReleasesJson::findLatestForMajor($releases, 33));
+    }
+
+    public function testFindLatestForMajorFallsBackToStable(): void
+    {
+        $this->assertSame('33.0.5', ReleasesJson::findLatestForMajor(['33.0.4' => [], '33.0.5' => []], 33));
+    }
+
+    public function testFindLatestForMajorIgnoresEnterpriseAndOtherMajors(): void
+    {
+        $releases = ['33.0.5' => [], '33.0.5 Enterprise' => [], '34.0.0' => []];
+        $this->assertSame('33.0.5', ReleasesJson::findLatestForMajor($releases, 33));
+        $this->assertNull(ReleasesJson::findLatestForMajor($releases, 35));
+    }
+
     public function testNewEntryOmitsDeployAt100(): void
     {
         $e = ReleasesJson::newEntry('33.0.6.1', 'BZ2', 'ZIP', 100);

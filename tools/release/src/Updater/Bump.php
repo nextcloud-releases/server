@@ -121,9 +121,17 @@ final class Bump
             $this->writeJson($majorsPath, MajorVersions::encode($majors));
         }
 
-        // Cross-major facts for appended scenarios.
+        // Cross-major facts for appended scenarios. The first beta of a new
+        // major appends a beta scenario "Updating latest {prevMajor} to {major}":
+        // its received version is the latest {prevMajor} an install on the beta
+        // channel can be on, i.e. the prev major's in-flight pre-release when one
+        // exists (released earlier in the same batch), otherwise its latest
+        // stable. Every other shape appends stable scenarios and wants the latest
+        // stable only.
         $prevMajor = $plan->major - 1;
-        $prevStableKey = ReleasesJson::findOldKey($releases, $prevMajor, ReleasePlan::TYPE_PATCH);
+        $prevStableKey = $type === 'first_prerelease'
+            ? ReleasesJson::findLatestForMajor($releases, $prevMajor)
+            : ReleasesJson::findOldKey($releases, $prevMajor, ReleasePlan::TYPE_PATCH);
         // Matches `jq -r` on a missing key: a literal "null" (used verbatim in the
         // appended scenario when the previous major has no stable release yet).
         $prevStableInternal = 'null';
@@ -148,6 +156,7 @@ final class Bump
             prevStableInternal: $prevStableInternal,
             phpVersion: "{$thisMinPhp}.0",
             eolDate: $eolDate,
+            deploy: $plan->deploy,
             rcUrlVersion: $rcUrlVersion,
             rcVersionString: $rcVersionString,
             rcInternal: $rcInternal,
@@ -159,11 +168,13 @@ final class Bump
             'stable' => $this->read("{$dir}/stable.feature"),
             'beta' => $this->read("{$dir}/beta.feature"),
             'latest' => $this->read("{$dir}/latest.feature"),
+            'daily' => $this->read("{$dir}/daily.feature"),
         ];
         $files = FeatureFiles::apply($type, $files, $inputs);
         $this->write("{$dir}/stable.feature", $files['stable']);
         $this->write("{$dir}/beta.feature", $files['beta']);
         $this->write("{$dir}/latest.feature", $files['latest']);
+        $this->write("{$dir}/daily.feature", $files['daily']);
 
         return $plan;
     }

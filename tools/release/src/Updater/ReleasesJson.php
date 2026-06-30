@@ -42,6 +42,25 @@ final class ReleasesJson
     }
 
     /**
+     * The latest entry of a major, pre-release or stable (last in insertion
+     * order, which for ascending-order releases is the highest version).
+     * Enterprise entries are ignored. Null when the major has no entry.
+     *
+     * @param array<string, mixed> $releases
+     */
+    public static function findLatestForMajor(array $releases, int $major): ?string
+    {
+        $prefix = "{$major}.";
+        $found = null;
+        foreach (array_keys($releases) as $key) {
+            if (str_starts_with($key, $prefix) && !str_contains($key, 'Enterprise')) {
+                $found = $key;
+            }
+        }
+        return $found;
+    }
+
+    /**
      * The in-flight pre-release entry for a given base version, if any: e.g.
      * base "34.0.1" matches the key "34.0.1 RC2". Used when a stable patch
      * promotes the RC it went through (34.0.1 RC2 -> 34.0.1) so the beta

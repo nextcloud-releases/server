@@ -9,10 +9,11 @@ namespace Nextcloud\ReleaseTools\Updater;
 
 /**
  * Rewrites the updater server's Behat feature files for a release. Pure: takes
- * the three file contents (stable/beta/latest) and returns the updated ones.
- * Ports the four update_features_* functions of update-updater-server.sh.
+ * the four file contents (stable/beta/latest/daily) and returns the updated
+ * ones. Ports the update_features_* functions of update-updater-server.sh, plus
+ * the staged-rollout and daily-channel upkeep the bash script never did.
  *
- * @phpstan-type Files array{stable: string, beta: string, latest: string}
+ * @phpstan-type Files array{stable: string, beta: string, latest: string, daily: string}
  */
 final class FeatureFiles
 {
@@ -48,7 +49,34 @@ final class FeatureFiles
             "\"{$in->oldVersionString}\"" => "\"{$in->versionString}\"",
             "nextcloud-{$in->oldUrlVersion}." => "nextcloud-{$in->urlVersion}.",
         ]);
+        // A staged patch (deploy < 100) keeps the "(staged rollout)" scenario's
+        // mtime above the rollout cutoff so the install stays excluded.
+        if ($in->deploy < 100) {
+            $files['stable'] = self::setStagedRolloutMtime($files['stable'], $in->deploy);
+        }
         return $files;
+    }
+
+    /**
+     * Set the mtime of every "(staged rollout)" scenario so its last two digits
+     * exceed the rollout percentage (deploy + 1) - an install with that mtime is
+     * excluded from the rollout (Response.php: included iff last-2-digits <= deploy).
+     */
+    private static function setStagedRolloutMtime(string $text, int $deploy): string
+    {
+        $mtime = $deploy + 1;
+        $lines = explode("\n", $text);
+        $inStaged = false;
+        foreach ($lines as $i => $line) {
+            if (str_contains($line, 'Scenario:')) {
+                $inStaged = str_contains($line, '(staged rollout)');
+            }
+            if ($inStaged && str_contains($line, 'installation mtime is "')) {
+                $lines[$i] = preg_replace('/installation mtime is "\d+"/', "installation mtime is \"{$mtime}\"", $line);
+                $inStaged = false; // only the first mtime line of the scenario
+            }
+        }
+        return implode("\n", $lines);
     }
 
     /** RC/beta bump: update the beta channel only. */
@@ -195,7 +223,37 @@ final class FeatureFiles
                 ["server/releases/nextcloud-{$in->urlVersion}" => "server/{$in->urlDir}/nextcloud-{$in->urlVersion}"],
             );
         }
+        $files['daily'] = self::firstPrereleaseDaily($files['daily'], $in);
         return $files;
+    }
+
+    /**
+     * Daily channel upkeep when a new major is born: the former "master" daily
+     * (the previous major) becomes a stable daily, and a fresh master daily
+     * scenario for the new major is prepended. "master" daily points at
+     * latest-master.zip / docs/latest; a stable daily points at
+     * latest-stable{major}.zip / docs/{major}.
+     */
+    private static function firstPrereleaseDaily(string $daily, FeatureInputs $in): string
+    {
+        // Demote the previous major's master daily to a stable daily.
+        $daily = strtr($daily, [
+            'daily/latest-master.zip' => "daily/latest-stable{$in->prevMajor}.zip",
+            '/server/latest/admin_manual' => "/server/{$in->prevMajor}/admin_manual",
+        ]);
+        // Prepend the new major's master daily scenario.
+        $scenario = "  Scenario: Updating an outdated Nextcloud {$in->major} daily\n"
+            . "    Given There is a release with channel \"daily\"\n"
+            . "    And The received version is \"{$in->major}.1.0\"\n"
+            . "    And the received build is \"2012-10-19T18:44:30+00:00\"\n"
+            . "    When The request is sent\n"
+            . "    Then The response is non-empty\n"
+            . "    And Update to version \"100.0.0.0\" is available\n"
+            . "    And URL to download is \"https://download.nextcloud.com/server/daily/latest-master.zip\"\n"
+            . "    And URL to documentation is \"https://docs.nextcloud.com/server/latest/admin_manual/maintenance/upgrade.html\"\n"
+            . "    And EOL date is set to \"{$in->eolDate}\"\n"
+            . "    And No signature is set\n";
+        return preg_replace('/^  Scenario:/m', $scenario . "\n  Scenario:", $daily, 1) ?? $daily;
     }
 
     /** The two scenarios appended to a channel's feature file. */
