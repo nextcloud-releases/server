@@ -74,6 +74,17 @@ jobs:
           VERSION="${{ steps.parse.outputs.version }}"
           mkdir -p /tmp/release
 
+          # A dry run only renders the diff; the release (and its .sig files) may
+          # not exist yet. Use a fake but well-formed signature so the bump and
+          # `make config/config.php` succeed without touching the release.
+          if [ "${{ inputs.dry_run || 'false' }}" = "true" ]; then
+            FAKE=$(printf 'A%.0s' {1..342})==
+            echo "bz2=${FAKE}" >> "$GITHUB_OUTPUT"
+            echo "zip=${FAKE}" >> "$GITHUB_OUTPUT"
+            echo "::notice::dry run - using fake signatures, skipping release download"
+            exit 0
+          fi
+
           # Download .sig files attached to the GitHub release
           for ext in tar.bz2 zip; do
             sigfile="nextcloud-${VERSION}.${ext}.sig"
