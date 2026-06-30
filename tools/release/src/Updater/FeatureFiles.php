@@ -25,6 +25,7 @@ final class FeatureFiles
         return match ($releaseType) {
             'patch' => self::patch($files, $in),
             'prerelease' => self::prerelease($files, $in),
+            'stable_to_prerelease' => self::stableToPrerelease($files, $in),
             'first_stable' => self::firstStable($files, $in),
             'first_prerelease' => self::firstPrerelease($files, $in),
             default => $files,
@@ -63,6 +64,36 @@ final class FeatureFiles
             $in->oldVersionString => $in->versionString,
             "nextcloud-{$in->oldUrlVersion}." => "nextcloud-{$in->urlVersion}.",
         ]);
+        return $files;
+    }
+
+    /**
+     * Pre-release of a patch line (e.g. 34.0.1 RC1 after 34.0.0 stable): flip
+     * the beta channel from the current stable release to the new pre-release,
+     * swapping the download dir releases/ -> prereleases/. The exact inverse of
+     * firstStable, minus the appended scenarios and the stable-section rewrite -
+     * the major already has its beta scenarios, so we only retarget them.
+     */
+    private static function stableToPrerelease(array $files, FeatureInputs $in): array
+    {
+        $files['beta'] = strtr($files['beta'], [
+            "releases/nextcloud-{$in->oldUrlVersion}." => "prereleases/nextcloud-{$in->urlVersion}.",
+            "/v{$in->oldUrlVersion}/nextcloud-{$in->oldUrlVersion}." => "/v{$in->urlVersion}/nextcloud-{$in->urlVersion}.",
+            "/v{$in->oldUrlVersion}/" => "/v{$in->urlVersion}/",
+            $in->oldInternal => $in->internalVersion,
+            "\"{$in->oldVersionString}\"" => "\"{$in->versionString}\"",
+        ]);
+        $files['beta'] = Signature::replace($files['beta'], $in->oldZipSig, $in->zipSig);
+
+        $files['latest'] = self::replaceInSection(
+            $files['latest'],
+            'I want to know the latest beta',
+            'URL to download',
+            [
+                "\"{$in->oldVersionString}\"" => "\"{$in->versionString}\"",
+                "releases/nextcloud-{$in->oldUrlVersion}.zip" => "prereleases/nextcloud-{$in->urlVersion}.zip",
+            ],
+        );
         return $files;
     }
 

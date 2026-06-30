@@ -36,14 +36,32 @@ final class Bump
 
         $oldKey = ReleasesJson::findOldKey($releases, $plan->major, $plan->releaseType);
 
-        // A pre-release with no prior entry is the first pre-release of a new major.
+        // The releases.json key to actually drop. Same as $oldKey for the
+        // common case (a pre-release supersedes the previous RC; a patch
+        // supersedes the previous stable), but null for stable_to_prerelease,
+        // where the stable entry stays and the pre-release is merely added.
+        $replaceKey = $oldKey;
+
+        // A pre-release with no prior pre-release entry is one of two things:
+        //  - if the major already shipped a stable release, it is a pre-release
+        //    of an upcoming *patch* (e.g. 34.0.1 RC1 after 34.0.0): flip the
+        //    beta channel from that stable entry to the pre-release, but keep
+        //    the stable entry (stable installs still resolve against it);
+        //  - otherwise it is the first pre-release of a brand-new major.
         // A patch/first-stable with no entry to replace is an error: proceeding
         // with empty "old" values would corrupt the feature files (the empty
         // version string matches the """ doc-string delimiters).
         $type = $plan->releaseType;
         if ($oldKey === null) {
             if ($type === ReleasePlan::TYPE_PRERELEASE) {
-                $type = 'first_prerelease';
+                $stableKey = ReleasesJson::findOldKey($releases, $plan->major, ReleasePlan::TYPE_PATCH);
+                if ($stableKey !== null) {
+                    $type = 'stable_to_prerelease';
+                    $oldKey = $stableKey; // read old values from the stable entry
+                    $replaceKey = null;   // but do not remove it
+                } else {
+                    $type = 'first_prerelease';
+                }
             } else {
                 throw new \RuntimeException(
                     "No existing entry found for major {$plan->major} (type={$type}) in releases.json",
@@ -62,7 +80,7 @@ final class Bump
 
         // Update releases.json.
         $entry = ReleasesJson::newEntry($internalVersion, $bz2Sig, $zipSig, $plan->deploy);
-        $releases = ReleasesJson::apply($releases, $oldKey, $plan->versionString, $entry);
+        $releases = ReleasesJson::apply($releases, $replaceKey, $plan->versionString, $entry);
         $this->writeJson($releasesPath, ReleasesJson::encode($releases));
 
         // Update major_versions.json for a brand-new major.
