@@ -24,6 +24,7 @@ final class FeatureFiles
     {
         return match ($releaseType) {
             'patch' => self::patch($files, $in),
+            'patch_promote_rc' => self::patchPromoteRc($files, $in),
             'prerelease' => self::prerelease($files, $in),
             'stable_to_prerelease' => self::stableToPrerelease($files, $in),
             'first_stable' => self::firstStable($files, $in),
@@ -64,6 +65,41 @@ final class FeatureFiles
             $in->oldVersionString => $in->versionString,
             "nextcloud-{$in->oldUrlVersion}." => "nextcloud-{$in->urlVersion}.",
         ]);
+        return $files;
+    }
+
+    /**
+     * Stable patch that promotes an in-flight RC (e.g. 34.0.1 RC2 -> 34.0.1):
+     * the stable channel moves off the previous stable (handled by patch()),
+     * and the beta channel - currently on the RC - is flipped to the same
+     * stable, swapping prereleases/ -> releases/. The exact inverse of
+     * stableToPrerelease, on the beta side.
+     */
+    private static function patchPromoteRc(array $files, FeatureInputs $in): array
+    {
+        // Stable channel + latest stable section: previous stable -> this patch.
+        $files = self::patch($files, $in);
+
+        // Beta channel: retire the RC, pointing it at the new stable.
+        $files['beta'] = strtr($files['beta'], [
+            "prereleases/nextcloud-{$in->rcUrlVersion}." => "releases/nextcloud-{$in->urlVersion}.",
+            "/v{$in->rcUrlVersion}/nextcloud-{$in->rcUrlVersion}." => "/v{$in->urlVersion}/nextcloud-{$in->urlVersion}.",
+            "/v{$in->rcUrlVersion}/" => "/v{$in->urlVersion}/",
+            $in->rcInternal => $in->internalVersion,
+            "\"{$in->rcVersionString}\"" => "\"{$in->versionString}\"",
+        ]);
+        $files['beta'] = Signature::replace($files['beta'], $in->rcZipSig, $in->zipSig);
+
+        // latest beta section: RC -> this stable.
+        $files['latest'] = self::replaceInSection(
+            $files['latest'],
+            'I want to know the latest beta',
+            'URL to download',
+            [
+                "\"{$in->rcVersionString}\"" => "\"{$in->versionString}\"",
+                "prereleases/nextcloud-{$in->rcUrlVersion}.zip" => "releases/nextcloud-{$in->urlVersion}.zip",
+            ],
+        );
         return $files;
     }
 

@@ -69,7 +69,23 @@ final class Bump
             }
         }
 
-        // Old values (read before mutating).
+        // A stable patch usually goes out through one or more RCs first
+        // (34.0.0 -> 34.0.1 RC1 -> 34.0.1 RC2 -> 34.0.1). When such an RC is
+        // still in releases.json, promoting the patch must also retire it: flip
+        // the beta channel off the pre-release and drop its entry. With no RC
+        // in flight (a direct hotfix), this stays an ordinary patch.
+        $base = "{$plan->major}.{$plan->minor}.{$plan->patch}";
+        $rcKey = null;
+        if ($type === ReleasePlan::TYPE_PATCH) {
+            $rcKey = ReleasesJson::findPrereleaseForBase($releases, $base);
+            if ($rcKey !== null) {
+                $type = 'patch_promote_rc';
+            }
+        }
+
+        // Old values (read before mutating). old* = the stable being replaced
+        // on the stable channel; rc* = the pre-release being retired from the
+        // beta channel (patch_promote_rc only).
         $oldInternal = $oldKey !== null ? (string) ($releases[$oldKey]['internalVersion'] ?? '') : '';
         $oldZipSig = '';
         if ($oldKey !== null) {
@@ -78,9 +94,23 @@ final class Bump
         $oldVersionString = $oldKey ?? '';
         $oldUrlVersion = $oldKey !== null ? strtolower(str_replace(' ', '', $oldKey)) : '';
 
-        // Update releases.json.
+        $rcInternal = '';
+        $rcZipSig = '';
+        $rcVersionString = '';
+        $rcUrlVersion = '';
+        if ($rcKey !== null) {
+            $rcInternal = (string) ($releases[$rcKey]['internalVersion'] ?? '');
+            $rcZipSig = (string) ($releases[$rcKey]['signatures']['zip'] ?? $releases[$rcKey]['signature'] ?? '');
+            $rcVersionString = $rcKey;
+            $rcUrlVersion = strtolower(str_replace(' ', '', $rcKey));
+        }
+
+        // Update releases.json: replace the old stable, and drop the promoted RC.
         $entry = ReleasesJson::newEntry($internalVersion, $bz2Sig, $zipSig, $plan->deploy);
         $releases = ReleasesJson::apply($releases, $replaceKey, $plan->versionString, $entry);
+        if ($rcKey !== null) {
+            unset($releases[$rcKey]);
+        }
         $this->writeJson($releasesPath, ReleasesJson::encode($releases));
 
         // Update major_versions.json for a brand-new major.
@@ -118,6 +148,10 @@ final class Bump
             prevStableInternal: $prevStableInternal,
             phpVersion: "{$thisMinPhp}.0",
             eolDate: $eolDate,
+            rcUrlVersion: $rcUrlVersion,
+            rcVersionString: $rcVersionString,
+            rcInternal: $rcInternal,
+            rcZipSig: $rcZipSig,
         );
 
         $dir = "{$this->dir}/tests/integration/features";

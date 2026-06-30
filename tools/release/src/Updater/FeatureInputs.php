@@ -30,6 +30,14 @@ final class FeatureInputs
         public readonly string $prevStableInternal,
         public readonly string $phpVersion,
         public readonly string $eolDate,
+        // The in-flight RC a stable patch promotes (patch_promote_rc only):
+        // these describe the pre-release being retired from the beta channel,
+        // distinct from the old* fields, which describe the stable being
+        // replaced on the stable channel. Empty for every other release shape.
+        public readonly string $rcUrlVersion = '',
+        public readonly string $rcVersionString = '',
+        public readonly string $rcInternal = '',
+        public readonly string $rcZipSig = '',
     ) {
     }
 

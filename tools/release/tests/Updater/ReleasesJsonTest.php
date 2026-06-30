@@ -58,6 +58,35 @@ final class ReleasesJsonTest extends TestCase
         $this->assertSame('34.0.0', ReleasesJson::findOldKey($releases, 34, ReleasePlan::TYPE_PATCH));
     }
 
+    public function testFindPrereleaseForBaseMatchesInFlightRc(): void
+    {
+        $releases = [
+            '34.0.0' => [],
+            '34.0.1 RC1' => [],
+            '34.0.1 RC2' => [],
+        ];
+        // The latest RC for the base wins (insertion order).
+        $this->assertSame('34.0.1 RC2', ReleasesJson::findPrereleaseForBase($releases, '34.0.1'));
+    }
+
+    public function testFindPrereleaseForBaseNullWhenNoRc(): void
+    {
+        // Direct hotfix: no RC in flight for 33.0.6.
+        $this->assertNull(ReleasesJson::findPrereleaseForBase(['33.0.5' => []], '33.0.6'));
+    }
+
+    public function testFindPrereleaseForBaseDoesNotMatchPrefixSibling(): void
+    {
+        // "34.0.10 RC1" must not match base "34.0.1".
+        $releases = ['34.0.10 RC1' => []];
+        $this->assertNull(ReleasesJson::findPrereleaseForBase($releases, '34.0.1'));
+    }
+
+    public function testFindPrereleaseForBaseMatchesBeta(): void
+    {
+        $this->assertSame('34.0.0 beta 5', ReleasesJson::findPrereleaseForBase(['34.0.0 beta 5' => []], '34.0.0'));
+    }
+
     public function testNewEntryOmitsDeployAt100(): void
     {
         $e = ReleasesJson::newEntry('33.0.6.1', 'BZ2', 'ZIP', 100);
