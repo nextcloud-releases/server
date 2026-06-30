@@ -49,7 +49,7 @@ final class FeatureInputs
     public function eolLine(): string
     {
         return $this->eolDate !== ''
-            ? "And EOL date is \"{$this->eolDate}\""
+            ? "And EOL date is set to \"{$this->eolDate}\""
             : 'And EOL is set to "0"';
     }
 }

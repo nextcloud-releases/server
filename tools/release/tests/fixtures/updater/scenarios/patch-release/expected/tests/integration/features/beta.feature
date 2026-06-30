@@ -14,7 +14,7 @@ Feature: Testing the update scenario of beta releases
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v33.0.6/nextcloud-33.0.6.zip"
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v33.0.6/nextcloud-33.0.6.tar.bz2"
     And URL to documentation is "https://docs.nextcloud.com/server/33/admin_manual/maintenance/upgrade.html"
-    And EOL date is "2027-02-18"
+    And EOL date is set to "2027-02-18"
     And The signature is
     """
     TestZIPSig000000000000000000000000000000000000000000000000000000
@@ -39,7 +39,7 @@ Feature: Testing the update scenario of beta releases
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v33.0.6/nextcloud-33.0.6.zip"
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v33.0.6/nextcloud-33.0.6.tar.bz2"
     And URL to documentation is "https://docs.nextcloud.com/server/33/admin_manual/maintenance/upgrade.html"
-    And EOL date is "2027-02-18"
+    And EOL date is set to "2027-02-18"
     And The signature is
     """
     TestZIPSig000000000000000000000000000000000000000000000000000000

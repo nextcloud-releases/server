@@ -14,7 +14,7 @@ Feature: Testing the update scenario of stable releases
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v32.0.11/nextcloud-32.0.11.zip"
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v32.0.11/nextcloud-32.0.11.tar.bz2"
     And URL to documentation is "https://docs.nextcloud.com/server/32/admin_manual/maintenance/upgrade.html"
-    And EOL date is "2026-09-27"
+    And EOL date is set to "2026-09-27"
     And The signature is
     """
     fjrCxIdnySTTWKZifdp5+2SUF31Vv7d2JR0i8LL6O7NZ76xmKk8mQY44ecwNErUs
@@ -39,7 +39,7 @@ Feature: Testing the update scenario of stable releases
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v33.0.1/nextcloud-33.0.1.zip"
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v33.0.1/nextcloud-33.0.1.tar.bz2"
     And URL to documentation is "https://docs.nextcloud.com/server/33/admin_manual/maintenance/upgrade.html"
-    And EOL date is "2027-02-18"
+    And EOL date is set to "2027-02-18"
     And The signature is
     """
     TestZIPSig000000000000000000000000000000000000000000000000000000
@@ -64,7 +64,7 @@ Feature: Testing the update scenario of stable releases
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v33.0.1/nextcloud-33.0.1.zip"
     And Download URLS contain "https://github.com/nextcloud-releases/server/releases/download/v33.0.1/nextcloud-33.0.1.tar.bz2"
     And URL to documentation is "https://docs.nextcloud.com/server/33/admin_manual/maintenance/upgrade.html"
-    And EOL date is "2027-02-18"
+    And EOL date is set to "2027-02-18"
     And The signature is
     """
     TestZIPSig000000000000000000000000000000000000000000000000000000
