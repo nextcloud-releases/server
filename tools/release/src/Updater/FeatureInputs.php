@@ -30,6 +30,18 @@ final class FeatureInputs
         public readonly string $prevStableInternal,
         public readonly string $phpVersion,
         public readonly string $eolDate,
+        // Rollout percentage of this release. Drives the staged-rollout
+        // scenario's mtime (an install is offered the update iff the last two
+        // digits of its mtime are <= deploy; see updater_server Response.php).
+        public readonly int $deploy = 100,
+        // The in-flight RC a stable patch promotes (patch_promote_rc only):
+        // these describe the pre-release being retired from the beta channel,
+        // distinct from the old* fields, which describe the stable being
+        // replaced on the stable channel. Empty for every other release shape.
+        public readonly string $rcUrlVersion = '',
+        public readonly string $rcVersionString = '',
+        public readonly string $rcInternal = '',
+        public readonly string $rcZipSig = '',
     ) {
     }
 
@@ -37,7 +49,7 @@ final class FeatureInputs
     public function eolLine(): string
     {
         return $this->eolDate !== ''
-            ? "And EOL date is \"{$this->eolDate}\""
+            ? "And EOL date is set to \"{$this->eolDate}\""
             : 'And EOL is set to "0"';
     }
 }

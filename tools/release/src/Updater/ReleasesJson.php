@@ -42,6 +42,50 @@ final class ReleasesJson
     }
 
     /**
+     * The latest entry of a major, pre-release or stable (last in insertion
+     * order, which for ascending-order releases is the highest version).
+     * Enterprise entries are ignored. Null when the major has no entry.
+     *
+     * @param array<string, mixed> $releases
+     */
+    public static function findLatestForMajor(array $releases, int $major): ?string
+    {
+        $prefix = "{$major}.";
+        $found = null;
+        foreach (array_keys($releases) as $key) {
+            if (str_starts_with($key, $prefix) && !str_contains($key, 'Enterprise')) {
+                $found = $key;
+            }
+        }
+        return $found;
+    }
+
+    /**
+     * The in-flight pre-release entry for a given base version, if any: e.g.
+     * base "34.0.1" matches the key "34.0.1 RC2". Used when a stable patch
+     * promotes the RC it went through (34.0.1 RC2 -> 34.0.1) so the beta
+     * channel can be flipped off the pre-release and the RC entry dropped.
+     *
+     * @param array<string, mixed> $releases
+     */
+    public static function findPrereleaseForBase(array $releases, string $base): ?string
+    {
+        $found = null;
+        foreach (array_keys($releases) as $key) {
+            if (preg_match('/[Rr][Cc]|[Bb]eta|[Aa]lpha/', $key) !== 1) {
+                continue;
+            }
+            // Pre-release keys are "<base> RC2" / "<base> beta 5": the base is
+            // the part before the first whitespace.
+            $keyBase = preg_split('/\s+/', trim($key))[0] ?? '';
+            if ($keyBase === $base) {
+                $found = $key; // keep last match (insertion order)
+            }
+        }
+        return $found;
+    }
+
+    /**
      * The new entry. `deploy` is only written when it is not 100%.
      *
      * @return array<string, mixed>
