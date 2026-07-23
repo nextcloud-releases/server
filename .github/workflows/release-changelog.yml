@@ -88,6 +88,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Fix PHP 8 return type compatibility in github_helper
+        run: |
+          sed -i 's/protected function configure()/protected function configure(): void/' github_helper/changelog/index.php
+          sed -i 's/protected function execute(InputInterface \$input, OutputInterface \$output)$/protected function execute(InputInterface $input, OutputInterface $output): int/' github_helper/changelog/index.php
+
       - name: Set credentials
         run: |
           echo '{"username": "github-actions"}' > github_helper/credentials.json
