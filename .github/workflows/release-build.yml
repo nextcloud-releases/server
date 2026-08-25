@@ -101,11 +101,16 @@ jobs:
             exit 1
           fi
 
-          # Normalize both for comparison.
-          # version.php may say "34.0.0 RC3" or "34.0.0" — strip suffix + spaces, lowercase.
-          # Input version may be "34.0.0rc3" — strip suffix.
-          CLEAN_VERSION=$(echo "$VERSION" | sed 's/[[:space:]]*\(rc\|beta\|alpha\)[0-9]*$//i')
-          CLEAN_VSTRING=$(echo "$VERSION_STRING" | sed 's/[[:space:]]*\(RC\|rc\|beta\|alpha\)[0-9]*$//i')
+          # Normalize both for comparison. version.php may say "34.0.0 RC3",
+          # "35.0.0 beta 4" (spaces around the suffix and its number) or plain
+          # "34.0.0"; the input version is contiguous like "35.0.0beta4". Lowercase,
+          # drop all whitespace, then strip the pre-release suffix so both collapse
+          # to the bare "x.y.z".
+          normalize_version() {
+            echo "$1" | tr 'A-Z' 'a-z' | tr -d '[:space:]' | sed -E 's/(rc|beta|alpha)[0-9]*$//'
+          }
+          CLEAN_VERSION=$(normalize_version "$VERSION")
+          CLEAN_VSTRING=$(normalize_version "$VERSION_STRING")
 
           if [[ "$CLEAN_VSTRING" != "$CLEAN_VERSION" ]]; then
             echo "::error::version.php says ${VERSION_STRING} but releasing ${VERSION}. Is the bump PR merged?"
