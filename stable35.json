@@ -40,6 +40,11 @@
     "repo": "nextcloud/office"
   },
   {
+    "id": "dbdoctor",
+    "repo": "nextcloud/dbdoctor",
+    "composer_args": "--no-dev -a --quiet"
+  },
+  {
     "id": "password_policy",
     "repo": "nextcloud/password_policy"
   },
