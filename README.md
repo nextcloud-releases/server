@@ -58,6 +58,25 @@ beta of a major opens the *next* major milestone (`vN.0.0beta1` creates
 missing it fails; the one after is optional and set only when listed. Full
 details and examples are in [`tools/release/README.md`](tools/release/README.md).
 
+## Pre-release requirements
+
+These must hold before a release is triggered, otherwise the pipeline fails or
+produces a wrong result:
+
+1. **The release schedule is up-to-date.** `release-schedule.json`
+   must list a due date for the next patch milestone of the series being released
+   (for example `Nextcloud 34.0.4`). A stable release whose next milestone has no
+   due date fails in the milestones step. Add the missing entries ahead of time.
+2. **The major has a config JSON.** `stable<N>.json` for stable releases and RCs,
+   or `master.json` for a new major alpha or beta. It must list every bundled app.
+3. **The version bump PR is merged on server.** `version.php` on the target branch
+   must already state the version being released, so the tag and `version.php`
+   match.
+
+The release itself is triggered by the legacy release script, which dispatches
+`release.yml`. It is not started by hand. Re-running individual workflows for
+recovery is covered in [Running manually](#running-manually).
+
 ## Release configuration
 
 One JSON file per major version lists all bundled apps:
