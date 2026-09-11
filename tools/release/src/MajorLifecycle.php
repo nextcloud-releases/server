@@ -61,6 +61,36 @@ final class MajorLifecycle
     }
 
     /**
+     * Last day of a major's maintenance window (its release date plus 12
+     * months), or null when the release date cannot be read.
+     */
+    public function windowEnd(int $major): ?string
+    {
+        $released = $this->date(MilestonePlan::name($major));
+        if ($released === null) {
+            return null;
+        }
+        return (new \DateTimeImmutable($released . ' 00:00:00 UTC'))
+            ->modify('+' . self::SUPPORT_MONTHS . ' months')
+            ->format('Y-m-d');
+    }
+
+    /**
+     * The date a version is due, from its own milestone, or null when that
+     * milestone is missing or carries no due date.
+     */
+    public function releaseDate(Version $version): ?string
+    {
+        foreach (MilestonePlan::currentMilestones($version) as $title) {
+            $date = $this->date($title);
+            if ($date !== null) {
+                return $date;
+            }
+        }
+        return null;
+    }
+
+    /**
      * The month a version ships in, from its own milestone's due date. Falls
      * back to the current month when that milestone carries no date: a re-run
      * long after the fact then reads as later than the release, which can only
@@ -89,9 +119,16 @@ final class MajorLifecycle
     /** The YYYY-MM of a milestone's due date, or null when it has none. */
     private function month(string $title): ?string
     {
+        $date = $this->date($title);
+        return $date !== null ? substr($date, 0, 7) : null;
+    }
+
+    /** The YYYY-MM-DD of a milestone's due date, or null when it has none. */
+    private function date(string $title): ?string
+    {
         $this->dueByTitle ??= self::index($this->api->listMilestones(self::SERVER_REPO));
         $due = $this->dueByTitle[$title] ?? null;
-        return $due !== null ? substr($due, 0, 7) : null;
+        return $due !== null ? substr($due, 0, 10) : null;
     }
 
     /**

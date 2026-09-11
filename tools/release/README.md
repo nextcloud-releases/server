@@ -72,6 +72,28 @@ php bin/console milestones:update v33.0.4 stable33.json tag-only.json \
   --schedule release-schedule.json
 ```
 
+`schedule:extend` keeps that file ahead of the releases that read it. Given a
+release candidate it works out the next two patch milestones of the series,
+chaining from the round date of the version shipping now, and drops that
+version's own entry (nothing reads it again):
+
+```bash
+php bin/console schedule:extend v33.0.10rc1 release-schedule.json --write
+```
+
+```
+Release Nextcloud 33.0.10 is due 2026-10-15.
+  + Nextcloud 33.0.12: 2026-12-10
+  - Nextcloud 33.0.10 (shipping now)
+```
+
+It never re-dates an entry that already has a date, and chains from whatever
+date is there, so a correction taken from the wiki is preserved rather than
+overwritten by the cadence. It schedules nothing past a major's 12-month
+maintenance window, so an EOL major ends up with no entries at all. Without
+`--write` it only reports. The release pipeline runs it on every candidate and
+proposes the result as a pull request.
+
 For a stable release it resolves the next and upcoming dates from the schedule.
 The **next** milestone (the imminent release) is required: if it is neither in
 the schedule nor overridden, the command **fails** rather than creating a

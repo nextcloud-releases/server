@@ -1,0 +1,129 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+
+# Keeps release-schedule.json ahead of the releases that read it.
+#
+# Runs on release candidates, roughly a week before the stable release. It works
+# out the dates that stable release will need (the next two patch milestones of
+# the series), drops the entry for the version shipping now, and opens a pull
+# request for the release team when anything is missing.
+#
+# It never fails the release: a candidate needs no due dates of its own, and a
+# red job a week out only teaches people to ignore it. The dates come from the
+# committed cadence, which is a default and not the authority, so the pull
+# request exists to be checked against the wiki rather than merged blind.
+
+name: Update release schedule
+run-name: "Release schedule for ${{ inputs.tag }}"
+
+on:
+  # Called from release.yml on release candidates
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag the schedule should be ahead of (e.g. v33.0.10rc1)'
+        required: true
+      dry_run:
+        description: 'Dry run: report what would change, open no pull request'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Two majors rc'ing at once must not race for the same branch.
+concurrency:
+  group: release-schedule
+  cancel-in-progress: false
+
+jobs:
+  schedule:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      # RELEASE_TOKEN can open pull requests; GITHUB_TOKEN is the fallback.
+      GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout config
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install release-tools
+        run: composer install --no-interaction --no-progress --no-dev
+        working-directory: tools/release
+
+      # Every major rc'ing for the same round shares one branch and one pull
+      # request, so a second run adds to the first instead of opening another.
+      - name: Switch to the schedule branch
+        id: branch
+        run: |
+          BR="chore/release-schedule-$(date -u +%Y-%m)"
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          if git ls-remote --exit-code --heads origin "$BR" >/dev/null 2>&1; then
+            git fetch --depth=1 origin "$BR"
+            git checkout -B "$BR" FETCH_HEAD
+          else
+            git checkout -B "$BR"
+          fi
+          echo "name=$BR" >> "$GITHUB_OUTPUT"
+
+      - name: Work out the dates the stable release will need
+        id: extend
+        run: |
+          php tools/release/bin/console schedule:extend \
+            "$RELEASE_TAG" release-schedule.json --write | tee extend.log
+          if git diff --quiet -- release-schedule.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff -- release-schedule.json
+          fi
+
+      - name: Open or update the pull request
+        if: steps.extend.outputs.changed == 'true' && inputs.dry_run != true
+        run: |
+          BR="${{ steps.branch.outputs.name }}"
+          git config user.name "nextcloud-bot"
+          git config user.email "bot@nextcloud.com"
+          git add release-schedule.json
+          git commit --signoff -m "chore: schedule the rounds after $RELEASE_TAG" -m "$(tail -n +2 extend.log)"
+          git push origin "HEAD:refs/heads/$BR"
+
+          if [ -n "$(gh pr list --head "$BR" --state open --json number --jq '.[].number')" ]; then
+            echo "Pull request for $BR is already open, pushed another commit to it."
+            exit 0
+          fi
+
+          {
+            echo "\`$RELEASE_TAG\` is a release candidate, so the stable release is about a week out and needs its next two patch milestones dated in \`release-schedule.json\`. This adds what is missing and drops the entry for the version shipping now, which nothing reads again."
+            echo
+            echo "Without it the milestones step fails on release day, leaving the released milestone open and its issues unmoved."
+            echo
+            echo "> [!IMPORTANT]"
+            echo "> These dates come from the cadence documented in the README: a Thursday, one per calendar month, four weeks on and five when four would land twice in one month. **They are not read from the wiki.** Check them against the wiki release schedule before merging and edit this pull request wherever they differ."
+            echo
+            echo "Entries that already had a date were left alone, and nothing is scheduled past a major's 12-month maintenance window."
+          } > pr-body.md
+
+          gh pr create \
+            --base "${{ github.event.repository.default_branch }}" \
+            --head "$BR" \
+            --title "chore: keep release-schedule.json ahead of the next round" \
+            --body-file pr-body.md
