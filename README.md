@@ -11,13 +11,9 @@ from `nextcloud/server`.
 
 ## Triggering a release
 
-A release is fully determined by its tag (`vMAJOR.MINOR.PATCH[suffix]`). The
-legacy release script dispatches `release.yml` with that tag; nobody starts it
-by hand. Individual workflows can be re-run for recovery, see
-[Running a workflow by hand](#running-a-workflow-by-hand).
-
-From the tag alone, `release.yml` derives the release branch, the repository set,
-the milestone actions, and the release channel. There is no per-release
+A release is fully determined by its tag (`vMAJOR.MINOR.PATCH[suffix]`). From
+the tag alone, `release.yml` derives the release branch, the repository set, the
+milestone actions, and the release channel. There is no per-release
 configuration beyond the tag and the per-major app list:
 
 - a `.0.0` **alpha or beta of a new major** comes from `master`, using
@@ -25,9 +21,19 @@ configuration beyond the tag and the per-major app list:
 - **everything else**, stable releases and candidates, comes from `stableN`,
   using `stableN.json`
 
+> [!NOTE]
+> Nobody starts the pipeline by hand. The legacy release script dispatches
+> `release.yml` with the tag. Individual workflows can be re-run for recovery,
+> see [Running a workflow by hand](#running-a-workflow-by-hand).
+
 ## The pipeline
 
-`release.yml` dispatches six reusable workflows:
+`Tag -> Changelog -> Build -> Updater` is a linear chain; Milestones and Schedule
+branch off Tag and run in parallel with it. A failed job blocks its dependents,
+so the pipeline cannot publish a partial release.
+
+<details>
+<summary><b>What each of the six workflows does</b></summary>
 
 | Workflow | What it does | After | Only for |
 | --- | --- | --- | --- |
@@ -38,24 +44,23 @@ configuration beyond the tag and the per-major app list:
 | `release-milestones.yml` | Updates and audits milestones across the release set. See [Milestones](#milestones). | Tag | stable releases and first betas |
 | `release-schedule.yml` | Keeps `release-schedule.json` ahead of the releases that read it. See [Release schedule](#release-schedule). | Tag | candidates |
 
-`Tag -> Changelog -> Build -> Updater` is a linear chain; Milestones and Schedule
-branch off Tag and run in parallel with it. A failed job blocks its dependents,
-so the pipeline cannot publish a partial release.
-
 Tag, Milestones, Schedule, and Updater are PHP commands in
 [`tools/release/`](tools/release/README.md) with unit, snapshot, and byte-parity
 tests. Build, package, and sign are bash in
 [`.github/scripts/`](.github/scripts/README.md) with hermetic snapshot and unit
 tests. Both suites run on every push to `main` and every pull request.
 
+</details>
+
 ## Before a release
 
-These must hold before a release is triggered, otherwise the pipeline fails or
-produces a wrong result.
+> [!WARNING]
+> A stable release whose next patch milestone has no due date in
+> `release-schedule.json` **fails the milestones step on release day**. The
+> release still ships, but its milestone is left open and its issues unmoved.
+> This is normally handled for you, see [Release schedule](#release-schedule).
 
-1. **The next patch milestone has a date** in `release-schedule.json`. A stable
-   release whose next milestone has no due date fails the milestones step. This
-   is normally handled for you, see [Release schedule](#release-schedule).
+1. **The next patch milestone has a date** in `release-schedule.json`.
 2. **The major has a config JSON**: `stableN.json` for stable releases and
    candidates, `master.json` for a new major's alpha or beta. It must list every
    bundled app.
@@ -72,33 +77,40 @@ produces a wrong result.
 | `release-schedule.json` | Milestone due dates, as `"Nextcloud 34.0.1": "2026-06-25"`. |
 
 `stable32.json` and `stable33.json` carry 23 apps; `stable34.json`,
-`stable35.json`, and `master.json` carry 25 (those two also ship `files_lock` and
-`office`).
+`stable35.json`, and `master.json` carry 25 (those two also ship `files_lock`
+and `office`).
 
 ## Release schedule
 
 `release-schedule.json` gives the milestones step its due dates. Only two
 entries per maintained major matter, the next patch and the one after: the next
-one is required and a stable release missing it fails, the one after is optional
-and the milestone is created without a date when it is absent.
+one is required, the one after is optional and its milestone is created without
+a date when it is absent.
 
-**You should not normally edit this file by hand.** Every release candidate runs
-[`release-schedule.yml`](.github/workflows/release-schedule.yml), which opens a
-pull request with the dates the stable release will need a week later, and drops
-entries for rounds that have shipped. A weekly run catches anything a skipped
-candidate missed. Review that pull request against the wiki release schedule,
-because the dates in it are computed, not read from the wiki. A date you correct
-by hand is never overwritten.
+> [!TIP]
+> You should not normally edit this file by hand. Every release candidate runs
+> [`release-schedule.yml`](.github/workflows/release-schedule.yml), which opens a
+> pull request with the dates the stable release will need a week later and drops
+> entries for rounds that have shipped. A weekly run catches anything a skipped
+> candidate missed. A date you correct by hand is never overwritten.
 
 ### Cadence
 
 A round is a Thursday, at most one per calendar month, four weeks after the
 previous one, stretched to five when four weeks would land twice in the same
-month.
+month. Majors are maintained for 12 months from their release, so a series ends
+with the last round inside that window.
 
-Majors are maintained for 12 months from their release, so a series ends with
-the last round inside that window. 33 leaves maintenance on 2027-02-18 and 34 on
-2027-06-09:
+> [!IMPORTANT]
+> The wiki release schedule wins, and the pull request above is computed rather
+> than read from it. Check its dates against the wiki before merging. The cadence
+> is only for dates the wiki has not published yet.
+
+<details>
+<summary><b>Projected rounds for 33 and 34</b></summary>
+
+33 leaves maintenance on 2027-02-18 and 34 on 2027-06-09, so the series end at
+33.0.14 and 34.0.13.
 
 | Round | 33 | 34 |
 | --- | --- | --- |
@@ -112,9 +124,7 @@ the last round inside that window. 33 leaves maintenance on 2027-02-18 and 34 on
 | 2027-05-06 | | 34.0.12 |
 | 2027-06-03 | | 34.0.13 |
 
-> [!IMPORTANT]
-> The wiki release schedule wins. The cadence is only for dates the wiki has not
-> published yet.
+</details>
 
 ## Milestones
 
@@ -131,7 +141,7 @@ are reported as a warning. Details and worked examples are in
 
 ## Running a workflow by hand
 
-All of these take a tag and live under the Actions tab.
+All of these live under the Actions tab and take a tag, except the schedule one.
 
 - **Tag all repositories**: check `force` to overwrite existing tags (server
   repositories are never re-tagged), or `dry run` to preview.
@@ -145,12 +155,12 @@ All of these take a tag and live under the Actions tab.
 ## Migration status
 
 The target is a pipeline that owns the release end to end from a single tag,
-publishing included, with the legacy release script removed.
+publishing included, with the legacy release script removed. Today it runs in
+parallel with that script to establish byte-for-byte parity; publishing from the
+workflow is not yet enabled.
 
-Today the workflow runs in parallel with that script rather than replacing it.
-The script remains the source of the published artifacts and the download-server
-upload; the workflow rebuilds the same release and diffs its output byte for byte
-to establish parity. Publishing from the workflow is not yet enabled.
+<details>
+<summary><b>Why the cutover is staged, and what is left</b></summary>
 
 The cutover is staged because a release spans roughly 30 repositories, code
 signing, and the update channel every server consumes. The migration moves logic
@@ -171,3 +181,5 @@ Remaining before the legacy script can be retired:
 - **Changelog generator tests.** The PHP changelog tool has no unit tests.
 - **GPG signatures.** Published archives are not GPG-signed for independent
   verification.
+
+</details>
