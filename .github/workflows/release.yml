@@ -66,3 +66,20 @@ jobs:
     with:
       tag: ${{ inputs.tag }}
     secrets: inherit
+
+  # Single pass/fail for the whole pipeline. Milestones and Schedule each skip
+  # depending on the release shape, so a skip must not count as a failure.
+  summary:
+    permissions:
+      contents: none
+    runs-on: ubuntu-latest
+    needs: [tag, changelog, build, updater, schedule, milestones]
+
+    if: always()
+
+    name: release-summary
+
+    steps:
+      - name: Summary status
+        run: if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}; then exit 1; fi
+
