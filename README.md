@@ -55,7 +55,12 @@ milestone, moves open issues to `X.Y.(Z+1)`, and creates `X.Y.(Z+2)`. The first
 beta of a major opens the *next* major milestone (`vN.0.0beta1` creates
 `Nextcloud N+1`). Due dates for the two kept milestones come from
 `release-schedule.json`: the next (imminent) one is required, so a stable release
-missing it fails; the one after is optional and set only when listed. Full
+missing it fails; the one after is optional and set only when listed.
+
+The exception is the last release of a series. A major is maintained for 12
+months from its release, so when a release falls in or after the month that
+window closes, it closes its own milestone and rolls nothing forward: no
+`X.Y.(Z+1)` is created and open issues stay put, reported as a warning. Full
 details and examples are in [`tools/release/README.md`](tools/release/README.md).
 
 ## Pre-release requirements
@@ -67,6 +72,8 @@ produces a wrong result:
    must list a due date for the next patch milestone of the series being released
    (for example `Nextcloud 34.0.4`). A stable release whose next milestone has no
    due date fails in the milestones step. Add the missing entries ahead of time.
+   The one case where a missing entry is allowed is a major past its 12-month
+   maintenance window, where there is no next patch to schedule.
 2. **The major has a config JSON.** `stable<N>.json` for stable releases and RCs,
    or `master.json` for a new major alpha or beta. It must list every bundled app.
 3. **The version bump PR is merged on server.** `version.php` on the target branch
@@ -89,6 +96,8 @@ When a new app is added to the release or an existing one is removed, edit the c
 `tag-only.json` lists repositories that should be tagged on release but are not part of the build (server, 3rdparty, updater, example-files, documentation).
 
 `release-schedule.json` maps milestone titles to due dates (`"Nextcloud 34.0.1": "2026-06-25"`). The milestone step reads it to set due dates for the next and upcoming patch milestones. The next (imminent) milestone is required, so a stable release missing it fails; the one after is optional. Add entries ahead of time.
+
+Entries for releases that already shipped can be dropped: only `patch+1` and `patch+2` of the version being released are ever read. Do not add an entry for a major past its maintenance window, and do not expect one there.
 
 ## Running manually
 

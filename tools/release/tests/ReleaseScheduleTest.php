@@ -101,6 +101,38 @@ final class ReleaseScheduleTest extends TestCase
         $this->assertSame(['next' => null, 'upcoming' => null], $s->resolve(Version::fromTag('v35.0.0beta1')));
     }
 
+    public function testHasNextReportsWhetherTheImminentMilestoneIsScheduled(): void
+    {
+        // The caller needs "no date" separately from resolve()'s hard failure,
+        // so it can ask whether the major is EOL before giving up.
+        $s = $this->schedule(['Nextcloud 33.0.5' => '2026-07-02']);
+        $this->assertTrue($s->hasNext(Version::fromTag('v33.0.4')));
+        $this->assertFalse($s->hasNext(Version::fromTag('v33.0.5')));
+    }
+
+    public function testHasNextHonoursAnOverride(): void
+    {
+        $s = ReleaseSchedule::load(null);
+        $this->assertFalse($s->hasNext(Version::fromTag('v33.0.4')));
+        $this->assertTrue($s->hasNext(Version::fromTag('v33.0.4'), '2026-07-02'));
+    }
+
+    public function testHasNextIsSatisfiedByPrereleases(): void
+    {
+        // Pre-releases roll no milestones, so nothing is ever missing for them.
+        $s = ReleaseSchedule::load(null);
+        $this->assertTrue($s->hasNext(Version::fromTag('v33.0.2rc1')));
+        $this->assertTrue($s->hasNext(Version::fromTag('v35.0.0beta1')));
+    }
+
+    public function testHasNextDoesNotValidateTheDate(): void
+    {
+        // A malformed date is still a date: it is resolve()'s job to reject it,
+        // not this predicate's, or a typo would read as an ended series.
+        $s = $this->schedule(['Nextcloud 33.0.5' => '02-07-2026']);
+        $this->assertTrue($s->hasNext(Version::fromTag('v33.0.4')));
+    }
+
     public function testRejectsMalformedDate(): void
     {
         $s = $this->schedule([

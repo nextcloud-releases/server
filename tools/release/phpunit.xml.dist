@@ -16,6 +16,7 @@
             <file>tests/TagPolicyTest.php</file>
             <file>tests/ReleaseConfigTest.php</file>
             <file>tests/ReleaseScheduleTest.php</file>
+            <file>tests/MajorLifecycleTest.php</file>
         </testsuite>
         <!-- Milestone mover: close/create/move + due dates. -->
         <testsuite name="milestones-update">

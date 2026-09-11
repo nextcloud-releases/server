@@ -83,10 +83,32 @@ final class ReleaseSchedule
         return ['next' => $next, 'upcoming' => $upcoming];
     }
 
+    /**
+     * Whether the next patch milestone of a stable release has a date at all,
+     * from an override or the schedule. Pre-releases roll no milestones, so
+     * nothing is missing for them.
+     *
+     * Separate from resolve() so a caller can tell "no date" apart from
+     * "malformed date" before resolve() turns the first into a hard failure.
+     */
+    public function hasNext(Version $version, ?string $nextOverride = null): bool
+    {
+        if ($version->isPrerelease) {
+            return true;
+        }
+        return $this->raw(MilestonePlan::nextMilestone($version), $nextOverride) !== null;
+    }
+
     /** ISO due date from an override or the schedule, or null when neither has it. */
     private function lookup(string $title, ?string $override): ?string
     {
-        $raw = $override ?? ($this->byTitle[$title] ?? null);
+        $raw = $this->raw($title, $override);
         return $raw !== null ? DueDate::toIso($raw) : null;
+    }
+
+    /** The raw YYYY-MM-DD from an override or the schedule, unvalidated. */
+    private function raw(string $title, ?string $override): ?string
+    {
+        return $override ?? ($this->byTitle[$title] ?? null);
     }
 }

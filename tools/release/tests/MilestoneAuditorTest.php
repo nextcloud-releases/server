@@ -41,6 +41,50 @@ final class MilestoneAuditorTest extends TestCase
         $this->assertSame([], $this->audit($api));
     }
 
+    public function testEolMajorExpectsNoSuccessorMilestones(): void
+    {
+        // 32 after 32.0.15: only the closed released milestone remains, and
+        // that is the healthy end state. Without the EOL branch this reported
+        // two missing milestones that must never be created.
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 15, 'Nextcloud 32.0.15', 'closed');
+
+        $warnings = (new MilestoneAuditor($api))->audit(Version::fromTag('v32.0.15'), [self::REPO], true);
+
+        $this->assertSame([], $warnings);
+        $this->assertSame([], $api->journal, 'audit must be read-only');
+    }
+
+    public function testEolMajorWithASuccessorWarns(): void
+    {
+        // A 32.0.16 milestone means a release rolled one it should not have.
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 15, 'Nextcloud 32.0.15', 'closed');
+        $api->seedMilestone(self::REPO, 16, 'Nextcloud 32.0.16', 'open');
+
+        $warnings = (new MilestoneAuditor($api))->audit(Version::fromTag('v32.0.15'), [self::REPO], true);
+
+        $this->assertSame([
+            "nextcloud/server: 'Nextcloud 32.0.16'/'Nextcloud 32.0.17' exists but 32 is EOL - should not have a successor",
+        ], $warnings);
+    }
+
+    public function testEolMajorStillFlagsAnOpenReleasedMilestone(): void
+    {
+        // Being EOL drops only the successor rules; the released milestone
+        // still has to be closed.
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 15, 'Nextcloud 32.0.15', 'open', 3);
+
+        $warnings = (new MilestoneAuditor($api))->audit(Version::fromTag('v32.0.15'), [self::REPO], true);
+
+        // Also reported as an orphan, as any open released milestone is.
+        $this->assertContains(
+            "nextcloud/server: 'Nextcloud 32.0.15' still open (3 open issues) - should be closed",
+            $warnings,
+        );
+    }
+
     public function testReleasedStillOpenWarns(): void
     {
         $api = new FakeGitHubApi();
