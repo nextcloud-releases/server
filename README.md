@@ -107,9 +107,13 @@ with the last round inside that window.
 > is only for dates the wiki has not published yet.
 
 <details>
-<summary><b>Projected rounds for 33 and 34</b></summary>
+<summary><b>Worked example: the cadence applied to 33 and 34</b></summary>
 
-33 leaves maintenance on 2027-02-18 and 34 on 2027-06-09, so the series end at
+**This is an illustration, not a schedule to work from.** It applies the rule to
+the two majors that happened to be maintained when this was written, in
+September 2026, to show how it plays out. The wiki is the schedule.
+
+33 leaves maintenance on 2027-02-18 and 34 on 2027-06-09, so their series end at
 33.0.14 and 34.0.13.
 
 | Round | 33 | 34 |
@@ -123,6 +127,11 @@ with the last round inside that window.
 | 2027-04-01 | | 34.0.11 |
 | 2027-05-06 | | 34.0.12 |
 | 2027-06-03 | | 34.0.13 |
+
+Two things the example shows: the gap from 2027-04-01 to 2027-05-06 is five
+weeks rather than four, because four would have put a second round in April, and
+34 stops at 34.0.13 because the round after it, on 2027-07-01, falls outside the
+window.
 
 </details>
 
