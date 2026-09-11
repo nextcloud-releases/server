@@ -80,10 +80,6 @@ tests. Both suites run on every push to `main` and every pull request.
 | `tag-only.json` | Repositories tagged on release but not part of the build: server, 3rdparty, updater, example-files, documentation. |
 | `release-schedule.json` | Milestone due dates, as `"Nextcloud 34.0.1": "2026-06-25"`. |
 
-`stable32.json` and `stable33.json` carry 23 apps; `stable34.json`,
-`stable35.json`, and `master.json` carry 25 (those two also ship `files_lock`
-and `office`).
-
 ## Release schedule
 
 `release-schedule.json` gives the milestones step its due dates. Only two
