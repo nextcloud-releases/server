@@ -40,3 +40,19 @@ jobs:
 
       - name: Run unit tests
         run: bash tests/build-scripts/unit.sh
+
+  # Single required check for branch protection, covering every job above.
+  summary:
+    permissions:
+      contents: none
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    if: always()
+
+    name: test-build-scripts-summary
+
+    steps:
+      - name: Summary status
+        run: if ${{ needs.lint.result != 'success' || needs.test.result != 'success' }}; then exit 1; fi
+
