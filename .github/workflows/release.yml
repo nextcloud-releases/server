@@ -43,6 +43,17 @@ jobs:
       tag: ${{ inputs.tag }}
     secrets: inherit
 
+  # Runs after tagging a release candidate, roughly a week before the stable
+  # release it precedes. Proposes the schedule entries that release will need,
+  # as a pull request; never blocks the candidate.
+  schedule:
+    needs: tag
+    if: startsWith(inputs.tag, 'v') && contains(inputs.tag, 'rc')
+    uses: ./.github/workflows/release-schedule.yml
+    with:
+      tag: ${{ inputs.tag }}
+    secrets: inherit
+
   # Runs after tagging completes. Only for stable releases and first betas.
   # Runs in parallel with changelog and build.
   milestones:

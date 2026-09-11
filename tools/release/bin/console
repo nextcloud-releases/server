@@ -11,6 +11,7 @@ require __DIR__ . '/../vendor/autoload.php';
 use Nextcloud\ReleaseTools\Command\MilestonesAuditCommand;
 use Nextcloud\ReleaseTools\Command\MilestonesUpdateCommand;
 use Nextcloud\ReleaseTools\Command\RepoTagCommand;
+use Nextcloud\ReleaseTools\Command\ScheduleExtendCommand;
 use Nextcloud\ReleaseTools\Command\UpdaterBumpCommand;
 use Symfony\Component\Console\Application;
 
@@ -18,5 +19,6 @@ $app = new Application('nextcloud release-tools');
 $app->add(new MilestonesUpdateCommand());
 $app->add(new MilestonesAuditCommand());
 $app->add(new RepoTagCommand());
+$app->add(new ScheduleExtendCommand());
 $app->add(new UpdaterBumpCommand());
 $app->run();

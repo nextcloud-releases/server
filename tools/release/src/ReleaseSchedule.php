@@ -84,6 +84,17 @@ final class ReleaseSchedule
     }
 
     /**
+     * The schedule as committed: title => YYYY-MM-DD, unvalidated and in file
+     * order. For callers that rewrite the file rather than resolve due dates.
+     *
+     * @return array<string, string>
+     */
+    public function toArray(): array
+    {
+        return $this->byTitle;
+    }
+
+    /**
      * Whether the next patch milestone of a stable release has a date at all,
      * from an override or the schedule. Pre-releases roll no milestones, so
      * nothing is missing for them.
