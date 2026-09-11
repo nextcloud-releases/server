@@ -4,10 +4,9 @@ Release artifacts and automation for Nextcloud server. Branches are synced daily
 from `nextcloud/server`.
 
 > [!IMPORTANT]
-> This pipeline runs *alongside* the legacy release script, it has not replaced
-> it. The script is still what publishes the artifacts and uploads to the
-> download server; the workflow rebuilds the same release and diffs it byte for
-> byte to prove parity. See [Migration status](#migration-status).
+> This pipeline does not publish releases yet. The legacy release script still
+> does that, and this runs alongside it to prove it would produce the same
+> result. See [Migration status](#migration-status).
 
 ## Triggering a release
 
@@ -163,10 +162,14 @@ All of these live under the Actions tab and take a tag, except the schedule one.
 
 ## Migration status
 
-The target is a pipeline that owns the release end to end from a single tag,
-publishing included, with the legacy release script removed. Today it runs in
-parallel with that script to establish byte-for-byte parity; publishing from the
-workflow is not yet enabled.
+The old release script still does the real work. It builds the archives people
+download and uploads them to the download server. This pipeline shadows it:
+every release gets built twice, and the two results are compared byte for byte
+to show this one would have produced exactly the same thing. Nothing it builds
+is published.
+
+The goal is to delete that script and let this pipeline do the whole job from
+the tag onwards, upload included. Turning publishing on is the last step.
 
 <details>
 <summary><b>Why the cutover is staged, and what is left</b></summary>
