@@ -58,9 +58,13 @@ tests. Both suites run on every push to `main` and every pull request.
 > A stable release whose next patch milestone has no due date in
 > `release-schedule.json` **fails the milestones step on release day**. The
 > release still ships, but its milestone is left open and its issues unmoved.
-> This is normally handled for you, see [Release schedule](#release-schedule).
 
-1. **The next patch milestone has a date** in `release-schedule.json`.
+1. **The open release-schedule pull request is merged.** The candidate a week
+   earlier opened one with the dates this release needs, so merging it is
+   normally all this takes. If there is no such pull request, check that
+   `release-schedule.json` has an entry for the next patch milestone and add
+   one following the [cadence](#cadence) if it does not. See
+   [Release schedule](#release-schedule).
 2. **The major has a config JSON**: `stableN.json` for stable releases and
    candidates, `master.json` for a new major's alpha or beta. It must list every
    bundled app.
