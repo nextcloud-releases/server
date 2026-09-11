@@ -107,6 +107,35 @@ final class MajorLifecycle
         return gmdate('Y-m');
     }
 
+    /**
+     * The majors whose maintenance window has not closed as of $asOf (today by
+     * default), derived from the "Nextcloud N" milestones rather than a list
+     * that has to be kept current. Long-EOL majors drop out on their own.
+     *
+     * A window that is open does not promise another release: 32's window ran
+     * to 2026-09-27 while its last release was 32.0.15 on 2026-09-10. Callers
+     * still have to check whether the next round fits inside it.
+     *
+     * @return list<int> ascending
+     */
+    public function maintainedMajors(?string $asOf = null): array
+    {
+        $asOf ??= gmdate('Y-m-d');
+        $majors = [];
+        foreach ($this->dues() as $title => $due) {
+            if ($due === null || preg_match('/^Nextcloud (\d+)$/', $title, $m) !== 1) {
+                continue;
+            }
+            $major = (int) $m[1];
+            $end = $this->windowEnd($major);
+            if ($end !== null && $end >= $asOf) {
+                $majors[] = $major;
+            }
+        }
+        sort($majors);
+        return $majors;
+    }
+
     /** "YYYY-MM" advanced by a number of months. */
     public static function addMonths(string $month, int $count): string
     {
@@ -126,16 +155,25 @@ final class MajorLifecycle
     /** The YYYY-MM-DD of a milestone's due date, or null when it has none. */
     private function date(string $title): ?string
     {
-        $this->dueByTitle ??= self::index($this->api->listMilestones(self::SERVER_REPO));
-        $due = $this->dueByTitle[$title] ?? null;
+        $due = $this->dues()[$title] ?? null;
         return $due !== null ? substr($due, 0, 10) : null;
+    }
+
+    /**
+     * Every milestone's due date, fetched once.
+     *
+     * @return array<string, ?string>
+     */
+    private function dues(): array
+    {
+        return $this->dueByTitle ??= self::indexDues($this->api->listMilestones(self::SERVER_REPO));
     }
 
     /**
      * @param list<Milestone> $milestones
      * @return array<string, ?string>
      */
-    private static function index(array $milestones): array
+    private static function indexDues(array $milestones): array
     {
         $out = [];
         foreach ($milestones as $m) {

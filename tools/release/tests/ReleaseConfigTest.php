@@ -62,4 +62,39 @@ final class ReleaseConfigTest extends TestCase
         file_put_contents($path, $json);
         return $path;
     }
+
+    public function testLatestInFlightCountsAReleaseCandidate(): void
+    {
+        // At v33.0.10rc1 the round under way is 33.0.10, even though the only
+        // shipped release is 33.0.9.
+        $tags = ['v33.0.8', 'v33.0.9', 'v33.0.9rc1', 'v33.0.10rc1'];
+        $latest = ReleaseConfig::latestInFlight(33, $tags);
+        $this->assertSame([33, 0, 10], [$latest->major, $latest->minor, $latest->patch]);
+        $this->assertTrue($latest->isPrerelease);
+    }
+
+    public function testLatestInFlightPrefersTheReleaseOverItsOwnCandidate(): void
+    {
+        $latest = ReleaseConfig::latestInFlight(33, ['v33.0.10rc1', 'v33.0.10', 'v33.0.9']);
+        $this->assertSame([33, 0, 10], [$latest->major, $latest->minor, $latest->patch]);
+        $this->assertFalse($latest->isPrerelease);
+    }
+
+    public function testLatestInFlightOrdersNumericallyNotAsText(): void
+    {
+        $latest = ReleaseConfig::latestInFlight(33, ['v33.0.9', 'v33.0.10']);
+        $this->assertSame(10, $latest->patch);
+    }
+
+    public function testLatestInFlightHandlesANonZeroMinor(): void
+    {
+        // The 27.1.x series really existed.
+        $latest = ReleaseConfig::latestInFlight(27, ['v27.0.2', 'v27.1.10', 'v27.1.11']);
+        $this->assertSame([27, 1, 11], [$latest->major, $latest->minor, $latest->patch]);
+    }
+
+    public function testLatestInFlightIsNullWithNothingTagged(): void
+    {
+        $this->assertNull(ReleaseConfig::latestInFlight(35, ['v33.0.9', 'v34.0.4']));
+    }
 }

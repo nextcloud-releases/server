@@ -3,31 +3,31 @@
 
 # Keeps release-schedule.json ahead of the releases that read it.
 #
-# Runs on release candidates, roughly a week before the stable release. It works
-# out the dates that stable release will need (the next two patch milestones of
-# the series), drops the entry for the version shipping now, and opens a pull
-# request for the release team when anything is missing.
+# Takes no tag. It works out which majors are still inside their 12-month
+# maintenance window and the highest version tagged for each, candidates
+# included, then makes sure the next two patch milestones of every one of them
+# has a date and drops entries for rounds that have shipped. That makes it
+# idempotent: running it twice, or a week late, converges on the same file.
 #
-# It never fails the release: a candidate needs no due dates of its own, and a
-# red job a week out only teaches people to ignore it. The dates come from the
-# committed cadence, which is a default and not the authority, so the pull
-# request exists to be checked against the wiki rather than merged blind.
+# Runs on every release candidate, roughly a week before the stable release it
+# precedes, and weekly as a backstop because a candidate can be skipped. It
+# never fails the release: a candidate needs no due dates of its own, and a red
+# job a week out only teaches people to ignore it.
+#
+# The dates come from the committed cadence, which is a default and not the
+# authority, so the pull request exists to be checked against the wiki rather
+# than merged blind.
 
 name: Update release schedule
-run-name: "Release schedule for ${{ inputs.tag }}"
 
 on:
   # Called from release.yml on release candidates
   workflow_call:
-    inputs:
-      tag:
-        required: true
-        type: string
+  # Backstop, in case a round shipped without a candidate
+  schedule:
+    - cron: '17 6 * * 1'
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Release tag the schedule should be ahead of (e.g. v33.0.10rc1)'
-        required: true
       dry_run:
         description: 'Dry run: report what would change, open no pull request'
         required: false
@@ -37,7 +37,6 @@ on:
 permissions:
   contents: read
 
-# Two majors rc'ing at once must not race for the same branch.
 concurrency:
   group: release-schedule
   cancel-in-progress: false
@@ -48,9 +47,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      RELEASE_TAG: ${{ inputs.tag }}
       # RELEASE_TOKEN can open pull requests; GITHUB_TOKEN is the fallback.
       GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+      BRANCH: chore/release-schedule
 
     steps:
       - name: Checkout config
@@ -68,27 +67,10 @@ jobs:
         run: composer install --no-interaction --no-progress --no-dev
         working-directory: tools/release
 
-      # Every major rc'ing for the same round shares one branch and one pull
-      # request, so a second run adds to the first instead of opening another.
-      - name: Switch to the schedule branch
-        id: branch
-        run: |
-          BR="chore/release-schedule-$(date -u +%Y-%m)"
-          git remote set-url origin \
-            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          if git ls-remote --exit-code --heads origin "$BR" >/dev/null 2>&1; then
-            git fetch --depth=1 origin "$BR"
-            git checkout -B "$BR" FETCH_HEAD
-          else
-            git checkout -B "$BR"
-          fi
-          echo "name=$BR" >> "$GITHUB_OUTPUT"
-
-      - name: Work out the dates the stable release will need
+      - name: Work out the dates the next releases will need
         id: extend
         run: |
-          php tools/release/bin/console schedule:extend \
-            "$RELEASE_TAG" release-schedule.json --write | tee extend.log
+          php tools/release/bin/console schedule:extend release-schedule.json --write
           if git diff --quiet -- release-schedule.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
@@ -96,34 +78,38 @@ jobs:
             git --no-pager diff -- release-schedule.json
           fi
 
+      # One branch, always rebuilt from the default branch: the command is
+      # idempotent, so the newest run is always the whole answer.
       - name: Open or update the pull request
         if: steps.extend.outputs.changed == 'true' && inputs.dry_run != true
         run: |
-          BR="${{ steps.branch.outputs.name }}"
           git config user.name "nextcloud-bot"
           git config user.email "bot@nextcloud.com"
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git checkout -B "$BRANCH"
           git add release-schedule.json
-          git commit --signoff -m "chore: schedule the rounds after $RELEASE_TAG" -m "$(tail -n +2 extend.log)"
-          git push origin "HEAD:refs/heads/$BR"
+          git commit --signoff -m "chore: schedule the next maintenance rounds"
+          git push --force-with-lease origin "HEAD:refs/heads/$BRANCH"
 
-          if [ -n "$(gh pr list --head "$BR" --state open --json number --jq '.[].number')" ]; then
-            echo "Pull request for $BR is already open, pushed another commit to it."
+          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            echo "Pull request for $BRANCH is already open and has been updated."
             exit 0
           fi
 
           {
-            echo "\`$RELEASE_TAG\` is a release candidate, so the stable release is about a week out and needs its next two patch milestones dated in \`release-schedule.json\`. This adds what is missing and drops the entry for the version shipping now, which nothing reads again."
+            echo "\`release-schedule.json\` is short of the dates the next releases need. The milestones step requires a date for the next patch milestone of the series being released, and fails on release day without one, leaving the released milestone open and its issues unmoved."
             echo
-            echo "Without it the milestones step fails on release day, leaving the released milestone open and its issues unmoved."
+            echo "This keeps two future rounds dated for every major still inside its 12-month maintenance window, and drops entries for rounds that have shipped."
             echo
             echo "> [!IMPORTANT]"
             echo "> These dates come from the cadence documented in the README: a Thursday, one per calendar month, four weeks on and five when four would land twice in one month. **They are not read from the wiki.** Check them against the wiki release schedule before merging and edit this pull request wherever they differ."
             echo
-            echo "Entries that already had a date were left alone, and nothing is scheduled past a major's 12-month maintenance window."
+            echo "Entries that already had a date were left alone, so a correction made by hand survives. Nothing is scheduled past a major's maintenance window."
           } > pr-body.md
 
           gh pr create \
             --base "${{ github.event.repository.default_branch }}" \
-            --head "$BR" \
-            --title "chore: keep release-schedule.json ahead of the next round" \
+            --head "$BRANCH" \
+            --title "chore: schedule the next maintenance rounds" \
             --body-file pr-body.md

@@ -130,4 +130,46 @@ final class MajorLifecycleTest extends TestCase
         (new MajorLifecycle($api))->isFinalRelease(Version::fromTag('v32.0.15'));
         $this->assertSame([], $api->journal);
     }
+
+    public function testMaintainedMajorsExcludesThoseWhoseWindowHasClosed(): void
+    {
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 1, 'Nextcloud 31', 'closed', 0, '2025-02-25T00:00:00Z');
+        $api->seedMilestone(self::REPO, 2, 'Nextcloud 32', 'closed', 0, '2025-09-27T00:00:00Z');
+        $api->seedMilestone(self::REPO, 3, 'Nextcloud 33', 'closed', 0, '2026-02-18T00:00:00Z');
+        $api->seedMilestone(self::REPO, 4, 'Nextcloud 34', 'closed', 0, '2026-06-09T00:00:00Z');
+        // Patch milestones must not be mistaken for majors.
+        $api->seedMilestone(self::REPO, 5, 'Nextcloud 34.0.5', 'open', 0, '2026-10-15T00:00:00Z');
+
+        $l = new MajorLifecycle($api);
+        // 31 closed 2026-02-25; 32 closes 2026-09-27, so it is still in window.
+        $this->assertSame([32, 33, 34], $l->maintainedMajors('2026-09-11'));
+        // A fortnight later 32 has dropped out.
+        $this->assertSame([33, 34], $l->maintainedMajors('2026-09-28'));
+    }
+
+    public function testMaintainedMajorsIgnoresAMajorWithoutADueDate(): void
+    {
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 1, 'Nextcloud 35', 'open', 0, null);
+        $api->seedMilestone(self::REPO, 2, 'Nextcloud 34', 'closed', 0, '2026-06-09T00:00:00Z');
+        $this->assertSame([34], (new MajorLifecycle($api))->maintainedMajors('2026-09-11'));
+    }
+
+    public function testWindowEndIsTwelveMonthsAfterRelease(): void
+    {
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 1, 'Nextcloud 34', 'closed', 0, '2026-06-09T00:00:00Z');
+        $this->assertSame('2027-06-09', (new MajorLifecycle($api))->windowEnd(34));
+    }
+
+    public function testReleaseDateReadsTheVersionsOwnMilestone(): void
+    {
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 1, 'Nextcloud 33.0.10', 'open', 0, '2026-10-15T00:00:00Z');
+        $this->assertSame(
+            '2026-10-15',
+            (new MajorLifecycle($api))->releaseDate(Version::fromTag('v33.0.10rc1')),
+        );
+    }
 }
