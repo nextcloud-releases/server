@@ -55,7 +55,8 @@ milestone, moves open issues to `X.Y.(Z+1)`, and creates `X.Y.(Z+2)`. The first
 beta of a major opens the *next* major milestone (`vN.0.0beta1` creates
 `Nextcloud N+1`). Due dates for the two kept milestones come from
 `release-schedule.json`: the next (imminent) one is required, so a stable release
-missing it fails; the one after is optional and set only when listed.
+missing it fails; the one after is optional and set only when listed. See
+[the release cadence](#maintenance-release-cadence) for when rounds happen.
 
 The exception is the last release of a series. A major is maintained for 12
 months from its release, so when a release falls in or after the month that
@@ -70,10 +71,12 @@ produces a wrong result:
 
 1. **The release schedule is up-to-date.** `release-schedule.json`
    must list a due date for the next patch milestone of the series being released
-   (for example `Nextcloud 34.0.4`). A stable release whose next milestone has no
-   due date fails in the milestones step. Add the missing entries ahead of time.
-   The one case where a missing entry is allowed is a major past its 12-month
-   maintenance window, where there is no next patch to schedule.
+   (for example `Nextcloud 34.0.4`), and should list the one after it too. A stable
+   release whose next milestone has no due date fails in the milestones step. Add
+   the missing entries ahead of time, following
+   [the release cadence](#maintenance-release-cadence). A major past its 12-month
+   maintenance window is the one case where a missing entry is allowed, since
+   there is no next patch to schedule.
 2. **The major has a config JSON.** `stable<N>.json` for stable releases and RCs,
    or `master.json` for a new major alpha or beta. It must list every bundled app.
 3. **The version bump PR is merged on server.** `version.php` on the target branch
@@ -95,7 +98,30 @@ When a new app is added to the release or an existing one is removed, edit the c
 
 `tag-only.json` lists repositories that should be tagged on release but are not part of the build (server, 3rdparty, updater, example-files, documentation).
 
-`release-schedule.json` maps milestone titles to due dates (`"Nextcloud 34.0.1": "2026-06-25"`). The milestone step reads it to set due dates for the next and upcoming patch milestones. The next (imminent) milestone is required, so a stable release missing it fails; the one after is optional. Add entries ahead of time.
+`release-schedule.json` maps milestone titles to due dates (`"Nextcloud 34.0.1": "2026-06-25"`). The milestone step reads it to set due dates for the next and upcoming patch milestones. The next (imminent) milestone is required, so a stable release missing it fails; the one after is optional.
+
+Keep **two** entries per maintained major, the next patch and the one after, so the upcoming milestone gets a due date instead of being created without one. Each round consumes one entry, so top the file up every round. Entries for releases that already shipped can be dropped, as only `patch+1` and `patch+2` of the version being released are ever read. Do not add entries for a major past its maintenance window.
+
+### Maintenance release cadence
+
+A round is a Thursday, at most one per calendar month, four weeks after the previous one, stretched to five when four weeks would land twice in the same month.
+
+Majors are maintained for 12 months from their release, so a series ends with the last round inside that window. 33 leaves maintenance on 2027-02-18 and 34 on 2027-06-09:
+
+| Round | 33 | 34 |
+| --- | --- | --- |
+| 2026-10-15 | 33.0.10 | 34.0.5 |
+| 2026-11-12 | 33.0.11 | 34.0.6 |
+| 2026-12-10 | 33.0.12 | 34.0.7 |
+| 2027-01-07 | 33.0.13 | 34.0.8 |
+| 2027-02-04 | 33.0.14 | 34.0.9 |
+| 2027-03-04 | | 34.0.10 |
+| 2027-04-01 | | 34.0.11 |
+| 2027-05-06 | | 34.0.12 |
+| 2027-06-03 | | 34.0.13 |
+
+> [!IMPORTANT]
+> The wiki release schedule wins. Use the cadence only for dates the wiki has not published yet.
 
 Entries for releases that already shipped can be dropped: only `patch+1` and `patch+2` of the version being released are ever read. Do not add an entry for a major past its maintenance window, and do not expect one there.
 
