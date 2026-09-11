@@ -204,6 +204,66 @@ final class MilestoneUpdaterTest extends TestCase
         $this->assertStringContainsString('would', strtolower(implode("\n", $u->log)));
     }
 
+    public function testSeriesFinalClosesWithoutRollingAnythingForward(): void
+    {
+        // v32.0.15 shape: the last release of an EOL major. Nothing may be
+        // created, because a 32.0.16 milestone must never exist.
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 10, 'Nextcloud 32.0.15', 'open');
+
+        $u = new MilestoneUpdater($api);
+        $u->run(Version::fromTag('v32.0.15'), [self::REPO], null, null, true);
+
+        $this->assertSame([
+            ['action' => 'close', 'repo' => self::REPO, 'milestone' => 10],
+        ], $api->journal);
+        $this->assertSame([0, 1, 0], [$u->created, $u->closed, $u->moved]);
+    }
+
+    public function testSeriesFinalLeavesOpenIssuesInPlaceAndWarns(): void
+    {
+        // No successor to move them to, so they stay put and get reported. The
+        // warning is an annotation so it shows up in the workflow summary.
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 10, 'Nextcloud 32.0.15', 'open', 2);
+        $api->seedIssue(self::REPO, 100, 10);
+        $api->seedIssue(self::REPO, 101, 10);
+
+        $u = new MilestoneUpdater($api);
+        $u->run(Version::fromTag('v32.0.15'), [self::REPO], null, null, true);
+
+        $this->assertSame([
+            ['action' => 'close', 'repo' => self::REPO, 'milestone' => 10],
+        ], $api->journal, 'no issue may be moved when the series is over');
+        $this->assertSame(0, $u->moved);
+        $this->assertContains(
+            "::warning::nextcloud/server: 2 open issue(s) left in 'Nextcloud 32.0.15', 32 is EOL and has no successor milestone",
+            $u->log,
+        );
+    }
+
+    public function testSeriesFinalDryRunChangesNothing(): void
+    {
+        $api = new FakeGitHubApi();
+        $api->seedMilestone(self::REPO, 10, 'Nextcloud 32.0.15', 'open', 1);
+        $api->seedIssue(self::REPO, 100, 10);
+
+        $u = new MilestoneUpdater($api, true);
+        $u->run(Version::fromTag('v32.0.15'), [self::REPO], null, null, true);
+
+        $this->assertSame([], $api->journal);
+    }
+
+    public function testSeriesFinalSkipsReposWithoutTheMilestone(): void
+    {
+        $api = new FakeGitHubApi();
+        $u = new MilestoneUpdater($api);
+        $u->run(Version::fromTag('v32.0.15'), [self::REPO], null, null, true);
+
+        $this->assertSame([], $api->journal);
+        $this->assertSame(0, $u->closed);
+    }
+
     public function testAlreadyClosedCurrentIsNotReclosed(): void
     {
         // Re-running a shipped release (e.g. to backfill due dates): the current

@@ -18,6 +18,8 @@ use Nextcloud\ReleaseTools\GitHub\Milestone;
  *    sure two patch milestones stay open (X.Y.(Z+1) and X.Y.(Z+2)). Optional
  *    due dates are applied to those two whether they are created now or already
  *    exist.
+ *  - Stable that ends its series ($seriesFinal): close X.Y.Z and roll nothing
+ *    forward, since no further patch is coming.
  *  - Any other pre-release: no-op.
  *
  * Reads always hit the API; writes are skipped in dry-run (logged as "Would ...").
@@ -37,14 +39,14 @@ final class MilestoneUpdater
     }
 
     /** @param list<string> $repos */
-    public function run(Version $version, array $repos, ?string $nextDueOn = null, ?string $upcomingDueOn = null): void
+    public function run(Version $version, array $repos, ?string $nextDueOn = null, ?string $upcomingDueOn = null, bool $seriesFinal = false): void
     {
         if ($version->isFirstBeta) {
             $this->runFirstBeta($version, $repos);
             return;
         }
         if (!$version->isPrerelease) {
-            $this->runStable($version, $repos, $nextDueOn, $upcomingDueOn);
+            $this->runStable($version, $repos, $nextDueOn, $upcomingDueOn, $seriesFinal);
             return;
         }
         $this->log[] = 'Pre-release (not first beta): nothing to do.';
@@ -65,9 +67,13 @@ final class MilestoneUpdater
     }
 
     /** @param list<string> $repos */
-    private function runStable(Version $version, array $repos, ?string $nextDueOn, ?string $upcomingDueOn): void
+    private function runStable(Version $version, array $repos, ?string $nextDueOn, ?string $upcomingDueOn, bool $seriesFinal): void
     {
         $candidates = MilestonePlan::currentMilestones($version);
+        if ($seriesFinal) {
+            $this->runFinalRelease($version, $repos, $candidates);
+            return;
+        }
         $next = MilestonePlan::nextMilestone($version);
         $upcoming = MilestonePlan::upcomingMilestone($version);
 
@@ -93,6 +99,51 @@ final class MilestoneUpdater
             $this->close($repo, $current);
             // Ensure the upcoming milestone exists and carries its due date.
             $this->ensure($repo, $upcoming, $upcomingDueOn);
+        }
+    }
+
+    /**
+     * The last release of a series: close the released milestone and roll
+     * nothing forward, as there is no further patch to schedule.
+     *
+     * Open issues stay attached to the closed milestone and are reported per
+     * repo instead of being moved. Where an EOL major's leftovers belong is a
+     * judgement call (drop the milestone, carry them to the next major, or
+     * close them), so the tool reports and changes nothing.
+     *
+     * @param list<string> $repos
+     * @param list<string> $candidates
+     */
+    private function runFinalRelease(Version $version, array $repos, array $candidates): void
+    {
+        $this->log[] = sprintf(
+            'Stable release: %d.%d.%d ends the %d series, closing [%s] with no successor.',
+            $version->major,
+            $version->minor,
+            $version->patch,
+            $version->major,
+            implode(', ', $candidates),
+        );
+
+        foreach ($repos as $repo) {
+            $current = $this->findFirst($repo, $candidates);
+            if ($current === null) {
+                $this->log[] = "  {$repo}: no milestone " . implode('/', $candidates) . ", skipping";
+                continue;
+            }
+            $open = $this->api->openIssueNumbers($repo, $current->number);
+            if ($open !== []) {
+                // A workflow annotation rather than an indented log line, so it
+                // surfaces in the run summary: these need triaging by hand.
+                $this->log[] = sprintf(
+                    "::warning::%s: %d open issue(s) left in '%s', %d is EOL and has no successor milestone",
+                    $repo,
+                    count($open),
+                    $current->title,
+                    $version->major,
+                );
+            }
+            $this->close($repo, $current);
         }
     }
 

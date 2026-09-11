@@ -24,9 +24,10 @@ final class MilestoneAuditor
 
     /**
      * @param list<string> $repos
+     * @param bool $seriesFinal the major is EOL: expect no next/upcoming
      * @return list<string> warnings, one per problem (empty = all good)
      */
-    public function audit(Version $latestStable, array $repos): array
+    public function audit(Version $latestStable, array $repos, bool $seriesFinal = false): array
     {
         $expected = new AuditExpectation($latestStable);
         $major = $latestStable->major;
@@ -58,25 +59,31 @@ final class MilestoneAuditor
                 }
             }
 
-            // Next milestone should exist and be open.
-            $n = $byTitle[$next] ?? null;
-            if ($n === null) {
-                $warnings[] = "{$repo}: missing milestone '{$next}'";
-            } elseif ($n->state !== 'open') {
-                $warnings[] = "{$repo}: '{$next}' is {$n->state} - should be open";
-            }
+            if (!$seriesFinal) {
+                // Next milestone should exist and be open.
+                $n = $byTitle[$next] ?? null;
+                if ($n === null) {
+                    $warnings[] = "{$repo}: missing milestone '{$next}'";
+                } elseif ($n->state !== 'open') {
+                    $warnings[] = "{$repo}: '{$next}' is {$n->state} - should be open";
+                }
 
-            // Upcoming milestone should exist, be open, and have a due date.
-            $u = $byTitle[$upcoming] ?? null;
-            if ($u === null) {
-                $warnings[] = "{$repo}: missing milestone '{$upcoming}'";
-            } else {
-                if ($u->state !== 'open') {
-                    $warnings[] = "{$repo}: '{$upcoming}' is {$u->state} - should be open";
+                // Upcoming milestone should exist, be open, and have a due date.
+                $u = $byTitle[$upcoming] ?? null;
+                if ($u === null) {
+                    $warnings[] = "{$repo}: missing milestone '{$upcoming}'";
+                } else {
+                    if ($u->state !== 'open') {
+                        $warnings[] = "{$repo}: '{$upcoming}' is {$u->state} - should be open";
+                    }
+                    if ($u->dueOn === null) {
+                        $warnings[] = "{$repo}: '{$upcoming}' has no due date";
+                    }
                 }
-                if ($u->dueOn === null) {
-                    $warnings[] = "{$repo}: '{$upcoming}' has no due date";
-                }
+            } elseif (isset($byTitle[$next]) || isset($byTitle[$upcoming])) {
+                // A successor for an EOL major means a release rolled milestones
+                // it should not have, or the window is set wrong.
+                $warnings[] = "{$repo}: '{$next}'/'{$upcoming}' exists but {$major} is EOL - should not have a successor";
             }
 
             // Orphans: open patch milestones at or below the released version.

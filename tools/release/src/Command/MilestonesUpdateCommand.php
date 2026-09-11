@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace Nextcloud\ReleaseTools\Command;
 
 use Nextcloud\ReleaseTools\GitHub\KnpGitHubApi;
+use Nextcloud\ReleaseTools\MajorLifecycle;
 use Nextcloud\ReleaseTools\MilestoneUpdater;
 use Nextcloud\ReleaseTools\ReleaseConfig;
 use Nextcloud\ReleaseTools\ReleaseSchedule;
@@ -39,19 +40,28 @@ final class MilestonesUpdateCommand extends Command
         $version = Version::fromTag((string) $input->getArgument('tag'));
         $repos = ReleaseConfig::repos((string) $input->getArgument('config'), (string) $input->getArgument('tag-only'));
 
+        $schedule = ReleaseSchedule::load(self::optional($input, 'schedule'));
+        $nextOverride = self::optional($input, 'next-due');
+        $upcomingOverride = self::optional($input, 'upcoming-due');
+        $api = KnpGitHubApi::withToken(self::token());
+
+        // A stable release whose next patch milestone has no date either ended
+        // the series or ran against a stale schedule, and the two look the same
+        // from the schedule alone. Only an EOL major may carry on without one;
+        // the EOL lookup costs an API read and is skipped whenever a date is
+        // there, so an explicit schedule entry always wins.
+        $seriesFinal = !$schedule->hasNext($version, $nextOverride)
+            && (new MajorLifecycle($api))->isFinalRelease($version);
+
         // Resolve due dates before touching GitHub: a stable release with no
         // scheduled (or overridden) date fails here, leaving nothing half-done.
-        $schedule = ReleaseSchedule::load(self::optional($input, 'schedule'));
-        $due = $schedule->resolve(
-            $version,
-            self::optional($input, 'next-due'),
-            self::optional($input, 'upcoming-due'),
-        );
+        $due = $seriesFinal
+            ? ['next' => null, 'upcoming' => null]
+            : $schedule->resolve($version, $nextOverride, $upcomingOverride);
 
         $dryRun = (bool) $input->getOption('dry-run');
-        $api = KnpGitHubApi::withToken(self::token());
         $updater = new MilestoneUpdater($api, $dryRun);
-        $updater->run($version, $repos, $due['next'], $due['upcoming']);
+        $updater->run($version, $repos, $due['next'], $due['upcoming'], $seriesFinal);
 
         foreach ($updater->log as $line) {
             $output->writeln($line);

@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace Nextcloud\ReleaseTools\Command;
 
 use Nextcloud\ReleaseTools\GitHub\KnpGitHubApi;
+use Nextcloud\ReleaseTools\MajorLifecycle;
 use Nextcloud\ReleaseTools\MilestoneAuditor;
 use Nextcloud\ReleaseTools\ReleaseConfig;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -42,9 +43,14 @@ final class MilestonesAuditCommand extends Command
         }
 
         $repos = ReleaseConfig::repos($config, (string) $input->getArgument('tag-only'));
-        $warnings = (new MilestoneAuditor($api))->audit($latest, $repos);
+        $lifecycle = new MajorLifecycle($api);
+        $seriesFinal = $lifecycle->isFinalRelease($latest);
+        $warnings = (new MilestoneAuditor($api))->audit($latest, $repos, $seriesFinal);
 
         $output->writeln("=== Milestone audit for Nextcloud {$major} (latest stable {$latest->major}.{$latest->minor}.{$latest->patch}) ===");
+        if ($seriesFinal) {
+            $output->writeln("Maintenance ended in {$lifecycle->eolMonth($major)}: no successor milestone expected.");
+        }
         if ($warnings === []) {
             $output->writeln('OK - no issues found');
             return Command::SUCCESS;

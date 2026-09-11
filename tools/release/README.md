@@ -77,6 +77,18 @@ The **next** milestone (the imminent release) is required: if it is neither in
 the schedule nor overridden, the command **fails** rather than creating a
 milestone with no due date. The milestone **after** that may not be scheduled
 yet, so it is set only when listed and otherwise left without a due date.
+
+A missing next date has one legitimate cause: the series is over, and there is
+no further patch to schedule. Before failing, the command checks whether the
+major has left maintenance (`MajorLifecycle`). A major is supported for 12
+months from its release, read off the due date of its own `Nextcloud N`
+milestone, and the check is by **month**, because a maintenance round shifts a
+week either way: 32 shipped on 2025-09-27 and its last release was 32.0.15 on
+2026-09-10, well inside a window a day-precise check would still call open. If
+the major is EOL the release closes its milestone and rolls nothing forward,
+leaving open issues attached and warning about them; otherwise the original
+failure stands, so a stale schedule is still caught. An explicit schedule entry
+always wins and skips the check entirely.
 Pre-releases need no dates. `--next-due` / `--upcoming-due` override the schedule
 for a one-off run. The date is applied whether the milestone is brand new or
 already there, so re-running is harmless and also fixes any wrong dates.
