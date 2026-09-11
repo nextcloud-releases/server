@@ -72,27 +72,38 @@ php bin/console milestones:update v33.0.4 stable33.json tag-only.json \
   --schedule release-schedule.json
 ```
 
-`schedule:extend` keeps that file ahead of the releases that read it. Given a
-release candidate it works out the next two patch milestones of the series,
-chaining from the round date of the version shipping now, and drops that
-version's own entry (nothing reads it again):
+`schedule:extend` keeps that file ahead of the releases that read it. It takes
+no tag: it works out which majors are still inside their 12-month maintenance
+window and the highest version tagged for each, release candidates included,
+then makes sure two future rounds are dated for every one of them and drops
+entries for rounds that have shipped.
 
 ```bash
-php bin/console schedule:extend v33.0.10rc1 release-schedule.json --write
+php bin/console schedule:extend release-schedule.json --write
 ```
 
 ```
-Release Nextcloud 33.0.10 is due 2026-10-15.
-  + Nextcloud 33.0.12: 2026-12-10
-  - Nextcloud 33.0.10 (shipping now)
+Maintained majors:
+  33: up to date (Nextcloud 33.0.9 due 2026-09-10)
+  34: up to date (Nextcloud 34.0.4 due 2026-09-10)
+  35: Nextcloud 35.0.0 due 2026-09-17
+    + Nextcloud 35.0.1: 2026-10-15
+    + Nextcloud 35.0.2: 2026-11-12
 ```
+
+Because a candidate counts as in flight, the answer at v33.0.10rc1 is the same
+as it is once 33.0.10 ships, which makes the command idempotent: running it
+twice, or a week late, converges on the same file. Dates are chained from the
+round date of the version in flight, taken from its schedule entry when it has
+one and otherwise from its milestone's due date.
 
 It never re-dates an entry that already has a date, and chains from whatever
 date is there, so a correction taken from the wiki is preserved rather than
-overwritten by the cadence. It schedules nothing past a major's 12-month
-maintenance window, so an EOL major ends up with no entries at all. Without
-`--write` it only reports. The release pipeline runs it on every candidate and
-proposes the result as a pull request.
+overwritten by the cadence. It schedules nothing past a major's maintenance
+window, so an EOL major ends up with no entries at all. `--as-of` judges the
+windows against a given day, and without `--write` it only reports. The release
+pipeline runs it on every candidate, weekly as a backstop, and proposes the
+result as a pull request.
 
 For a stable release it resolves the next and upcoming dates from the schedule.
 The **next** milestone (the imminent release) is required: if it is neither in

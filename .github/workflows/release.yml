@@ -50,8 +50,6 @@ jobs:
     needs: tag
     if: startsWith(inputs.tag, 'v') && contains(inputs.tag, 'rc')
     uses: ./.github/workflows/release-schedule.yml
-    with:
-      tag: ${{ inputs.tag }}
     secrets: inherit
 
   # Runs after tagging completes. Only for stable releases and first betas.

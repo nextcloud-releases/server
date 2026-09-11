@@ -21,9 +21,9 @@ namespace Nextcloud\ReleaseTools;
  *  - a round past the major's maintenance window is not scheduled at all, since
  *    it is a round that will never happen.
  *
- * Removing the shipping entry is hygiene, not a requirement: ReleaseSchedule
- * only ever reads patch+1 and patch+2 of the version being released, so nothing
- * breaks if the removal is never applied.
+ * Removing shipped entries is hygiene, not a requirement: ReleaseSchedule only
+ * ever reads patch+1 and patch+2 of the version being released, so nothing
+ * breaks if the removals are never applied.
  */
 final class SchedulePlan
 {
@@ -69,9 +69,32 @@ final class SchedulePlan
             $add[$title] = $cursor;
         }
 
-        $shipping = MilestonePlan::name($version->major, $version->minor, $version->patch);
+        return new self($add, self::shipped($version, $schedule));
+    }
 
-        return new self($add, isset($schedule[$shipping]) ? [$shipping] : []);
+    /**
+     * Entries for versions of this series that have shipped, or are shipping
+     * now. Everything at or below the current patch, not just the exact match,
+     * so a round that was skipped does not leave an entry behind for good.
+     *
+     * @param array<string, string> $schedule
+     * @return list<string>
+     */
+    private static function shipped(Version $version, array $schedule): array
+    {
+        $shipped = [];
+        foreach (array_keys($schedule) as $title) {
+            if (preg_match('/^Nextcloud (\d+)\.(\d+)\.(\d+)$/', $title, $m) !== 1) {
+                continue;
+            }
+            if ((int) $m[1] === $version->major
+                && (int) $m[2] === $version->minor
+                && (int) $m[3] <= $version->patch
+            ) {
+                $shipped[] = $title;
+            }
+        }
+        return $shipped;
     }
 
     public function isEmpty(): bool

@@ -63,6 +63,33 @@ final class ReleaseConfig
         return Version::fromTag(end($matching));
     }
 
+    /**
+     * The highest version tagged for a major, release candidates included, or
+     * null when nothing is tagged yet.
+     *
+     * A candidate counts as in flight: at v33.0.10rc1 the round under way is
+     * 33.0.10, which is the one the schedule has to look past. version_compare
+     * ranks a candidate below its own release, so a shipped 33.0.10 still wins
+     * over 33.0.10rc1.
+     *
+     * @param list<string> $tagNames
+     */
+    public static function latestInFlight(int $major, array $tagNames): ?Version
+    {
+        $matching = array_values(array_filter(
+            $tagNames,
+            static fn (string $t) => preg_match("/^v{$major}\\.\\d+\\.\\d+/", $t) === 1,
+        ));
+        if ($matching === []) {
+            return null;
+        }
+        usort(
+            $matching,
+            static fn (string $a, string $b) => version_compare(ltrim($a, 'v'), ltrim($b, 'v')),
+        );
+        return Version::fromTag(end($matching));
+    }
+
     /** @param list<string> $tagNames */
     private static function highestStableMajor(array $tagNames): int
     {
