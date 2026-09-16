@@ -113,16 +113,8 @@ jobs:
           cd github_helper/changelog
           php index.php generate:changelog --no-bots --format=html server ${{ env.PREVIOUS_TAG }} ${{ env.RELEASE_TAG }} > "changelog-${{ env.RELEASE_TAG }}.html"
 
-      # Since this action only runs on nextcloud-releases, ignoring is okay
-      - name: Set changelog to release # zizmor: ignore[template-injection]
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-         gh release edit ${{ env.RELEASE_TAG }} \
-           --repo "${{ github.repository }}" \
-           --notes-file "github_helper/changelog/changelog-${{ env.RELEASE_TAG }}.md" \
-           --title "${{ env.RELEASE_TAG }}"
-
+      # Uploaded before the release notes are written, so that the fallback
+      # below can link to files that are already there.
       # Since this action only runs on nextcloud-releases, ignoring is okay
       - name: Attach changelog files to release # zizmor: ignore[template-injection]
         env:
@@ -133,3 +125,37 @@ jobs:
            "github_helper/changelog/changelog-${{ env.RELEASE_TAG }}.html" \
            --repo "${{ github.repository }}" \
            --clobber
+
+      - name: Set changelog to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ env.RELEASE_TAG }}
+          REPO: ${{ github.repository }}
+        run: |
+          CHANGELOG="github_helper/changelog/changelog-${TAG}.md"
+          NOTES="$CHANGELOG"
+
+          # GitHub rejects a release body over 125,000 characters with an
+          # unhelpful "HTTP 422: Validation Failed", and a major release
+          # changelog runs well past that: 35.0.0 came to 308,810 bytes. Point
+          # at the attached files instead. Counting bytes rather than
+          # characters errs on the side of the fallback, which is the safe way
+          # round.
+          if [ "$(wc -c < "$CHANGELOG")" -gt 120000 ]; then
+            echo "Changelog is $(wc -c < "$CHANGELOG") bytes, linking to the attachments instead."
+            DOWNLOAD="https://github.com/${REPO}/releases/download/${TAG}"
+            NOTES=release-notes.md
+            {
+              echo "## Nextcloud ${TAG#v}"
+              echo
+              echo "The changelog is too long to show here. You can find it in the assets below:"
+              echo
+              echo "- **[Read it in your browser](${DOWNLOAD}/changelog-${TAG}.html)**"
+              echo "- **[Download it as text](${DOWNLOAD}/changelog-${TAG}.md)**"
+            } > "$NOTES"
+          fi
+
+          gh release edit "$TAG" \
+            --repo "$REPO" \
+            --notes-file "$NOTES" \
+            --title "$TAG"
