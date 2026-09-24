@@ -35,6 +35,10 @@
             <file>tests/RepoTaggerTest.php</file>
             <file>tests/TaggerSnapshotTest.php</file>
         </testsuite>
+        <!-- GitHub adapter: the reads the in-memory fake cannot stand in for. -->
+        <testsuite name="github-api">
+            <directory>tests/GitHub</directory>
+        </testsuite>
         <!-- Updater-server release plan + config transforms. -->
         <testsuite name="updater">
             <directory>tests/Updater</directory>

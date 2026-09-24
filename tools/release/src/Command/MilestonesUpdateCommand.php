@@ -20,7 +20,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand(name: 'milestones:update', description: 'Close/create milestones and move issues for a release')]
+#[AsCommand(name: 'milestones:update', description: 'Close/create milestones and move open issues and pull requests for a release')]
 final class MilestonesUpdateCommand extends Command
 {
     protected function configure(): void
@@ -67,7 +67,7 @@ final class MilestonesUpdateCommand extends Command
             $output->writeln($line);
         }
         $output->writeln(sprintf(
-            '%s closed=%d created=%d issues-moved=%d',
+            '%s closed=%d created=%d moved=%d',
             $dryRun ? '[dry-run]' : 'Done:',
             $updater->closed,
             $updater->created,

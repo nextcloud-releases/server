@@ -237,7 +237,7 @@ final class MilestoneUpdaterTest extends TestCase
         ], $api->journal, 'no issue may be moved when the series is over');
         $this->assertSame(0, $u->moved);
         $this->assertContains(
-            "::warning::nextcloud/server: 2 open issue(s) left in 'Nextcloud 32.0.15', 32 is EOL and has no successor milestone",
+            "::warning::nextcloud/server: 2 open issue(s)/PR(s) left in 'Nextcloud 32.0.15', 32 is EOL and has no successor milestone",
             $u->log,
         );
     }

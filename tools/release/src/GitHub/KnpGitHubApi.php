@@ -76,15 +76,10 @@ final class KnpGitHubApi implements GitHubApi
         [$owner, $name] = $this->split($repo);
         $pager = new ResultPager($this->client);
         $rows = $pager->fetchAll($this->client->api('issue'), 'all', [$owner, $name, ['milestone' => $milestoneNumber, 'state' => 'open', 'per_page' => 100]]);
-        $numbers = [];
-        foreach ($rows as $row) {
-            // The issues endpoint also returns pull requests; only move issues.
-            if (isset($row['pull_request'])) {
-                continue;
-            }
-            $numbers[] = (int) $row['number'];
-        }
-        return $numbers;
+        // The issues endpoint returns pull requests too, and they are kept: an
+        // open backport that missed the release is headed for the next patch
+        // just as much as an open issue.
+        return array_map(static fn (array $row): int => (int) $row['number'], $rows);
     }
 
     public function moveIssue(string $repo, int $issueNumber, int $milestoneNumber): void
