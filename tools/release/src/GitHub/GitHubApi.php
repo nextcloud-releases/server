@@ -24,7 +24,7 @@ interface GitHubApi
 
     public function setMilestoneDue(string $repo, int $number, string $dueOn): void;
 
-    /** @return list<int> open issue numbers in a milestone (all pages) */
+    /** @return list<int> open issue and pull request numbers in a milestone (all pages) */
     public function openIssueNumbers(string $repo, int $milestoneNumber): array;
 
     public function moveIssue(string $repo, int $issueNumber, int $milestoneNumber): void;

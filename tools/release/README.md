@@ -52,8 +52,10 @@ always have somewhere to file the next two patch releases.
 
 1. find the `Nextcloud 33.0.4` milestone (for a `.0.0` it may be the short
    `Nextcloud 34` form instead);
-2. make sure `Nextcloud 33.0.5` exists - that is where issues go next;
-3. move every open issue from 33.0.4 to 33.0.5 (pull requests are left alone);
+2. make sure `Nextcloud 33.0.5` exists - that is where the leftovers go next;
+3. move everything still open in 33.0.4 to 33.0.5, issues and pull requests
+   alike - an open backport that missed the release is headed for the next
+   patch just as much as an open issue;
 4. close 33.0.4;
 5. make sure `Nextcloud 33.0.6` exists, so two patch milestones stay open.
 
@@ -119,8 +121,8 @@ milestone, and the check is by **month**, because a maintenance round shifts a
 week either way: 32 shipped on 2025-09-27 and its last release was 32.0.15 on
 2026-09-10, well inside a window a day-precise check would still call open. If
 the major is EOL the release closes its milestone and rolls nothing forward,
-leaving open issues attached and warning about them; otherwise the original
-failure stands, so a stale schedule is still caught. An explicit schedule entry
+leaving whatever is still open attached and warning about it; otherwise the
+original failure stands, so a stale schedule is still caught. An explicit schedule entry
 always wins and skips the check entirely.
 Pre-releases need no dates. `--next-due` / `--upcoming-due` override the schedule
 for a one-off run. The date is applied whether the milestone is brand new or

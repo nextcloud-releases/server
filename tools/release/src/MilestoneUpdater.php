@@ -14,10 +14,10 @@ use Nextcloud\ReleaseTools\GitHub\Milestone;
  * Applies the milestone changes for a release across repositories.
  *
  *  - First beta (vN.0.0beta1): create the next major milestone "Nextcloud N+1".
- *  - Stable (vX.Y.Z): close X.Y.Z, move its open issues to X.Y.(Z+1), and make
- *    sure two patch milestones stay open (X.Y.(Z+1) and X.Y.(Z+2)). Optional
- *    due dates are applied to those two whether they are created now or already
- *    exist.
+ *  - Stable (vX.Y.Z): close X.Y.Z, move everything still open in it (issues
+ *    and pull requests alike) to X.Y.(Z+1), and make sure two patch milestones
+ *    stay open (X.Y.(Z+1) and X.Y.(Z+2)). Optional due dates are applied to
+ *    those two whether they are created now or already exist.
  *  - Stable that ends its series ($seriesFinal): close X.Y.Z and roll nothing
  *    forward, since no further patch is coming.
  *  - Any other pre-release: no-op.
@@ -93,7 +93,7 @@ final class MilestoneUpdater
 
             // Ensure the next milestone exists and carries its due date.
             $nextNumber = $this->ensure($repo, $next, $nextDueOn);
-            // Move all open issues before closing the current milestone.
+            // Move everything still open before closing the current milestone.
             $this->moveIssues($repo, $current->number, $nextNumber, $next);
             // Close the released milestone.
             $this->close($repo, $current);
@@ -106,10 +106,10 @@ final class MilestoneUpdater
      * The last release of a series: close the released milestone and roll
      * nothing forward, as there is no further patch to schedule.
      *
-     * Open issues stay attached to the closed milestone and are reported per
-     * repo instead of being moved. Where an EOL major's leftovers belong is a
-     * judgement call (drop the milestone, carry them to the next major, or
-     * close them), so the tool reports and changes nothing.
+     * Open issues and pull requests stay attached to the closed milestone and
+     * are reported per repo instead of being moved. Where an EOL major's
+     * leftovers belong is a judgement call (drop the milestone, carry them to
+     * the next major, or close them), so the tool reports and changes nothing.
      *
      * @param list<string> $repos
      * @param list<string> $candidates
@@ -136,7 +136,7 @@ final class MilestoneUpdater
                 // A workflow annotation rather than an indented log line, so it
                 // surfaces in the run summary: these need triaging by hand.
                 $this->log[] = sprintf(
-                    "::warning::%s: %d open issue(s) left in '%s', %d is EOL and has no successor milestone",
+                    "::warning::%s: %d open issue(s)/PR(s) left in '%s', %d is EOL and has no successor milestone",
                     $repo,
                     count($open),
                     $current->title,
@@ -217,8 +217,8 @@ final class MilestoneUpdater
 
     private function moveIssues(string $repo, int $from, int $to, string $toTitle): void
     {
-        // Gather all open issue numbers up front, then move them - moving while
-        // paginating would shift later pages and drop issues.
+        // Gather all open numbers up front, then move them - moving while
+        // paginating would shift later pages and drop entries.
         $issues = $this->api->openIssueNumbers($repo, $from);
         foreach ($issues as $issue) {
             $this->moved++;
