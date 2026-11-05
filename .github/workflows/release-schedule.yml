@@ -79,7 +79,9 @@ jobs:
           fi
 
       # One branch, always rebuilt from the default branch: the command is
-      # idempotent, so the newest run is always the whole answer.
+      # idempotent, so the newest run is always the whole answer. That is why
+      # this force-pushes: a lease would need a remote-tracking ref the
+      # shallow checkout never fetches, and rejects the push as stale.
       - name: Open or update the pull request
         if: steps.extend.outputs.changed == 'true' && inputs.dry_run != true
         run: |
@@ -90,7 +92,7 @@ jobs:
           git checkout -B "$BRANCH"
           git add release-schedule.json
           git commit --signoff -m "chore: schedule the next maintenance rounds"
-          git push --force-with-lease origin "HEAD:refs/heads/$BRANCH"
+          git push --force origin "HEAD:refs/heads/$BRANCH"
 
           if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
             echo "Pull request for $BRANCH is already open and has been updated."
