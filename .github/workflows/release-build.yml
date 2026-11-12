@@ -433,22 +433,37 @@ jobs:
       - name: Report dev files .nextcloudignore missed
         env:
           DEV_FILES_REPORT: ${{ runner.temp }}/dev-files.tsv
+          BRANCH: ${{ needs.init.outputs.branch }}
+          MAJOR: ${{ needs.init.outputs.major }}
         run: |
           [ -s "$DEV_FILES_REPORT" ] || exit 0
+          if [ "$BRANCH" = master ]; then CONFIG=_config/master.json; else CONFIG="_config/stable${MAJOR}.json"; fi
+          # Bundled apps own their .nextcloudignore. Everything else (core,
+          # settings, shipped apps) comes from server's root .nextcloudignore.
+          awk -F'\t' -v bundled="$(jq -r '.[].id' "$CONFIG" | paste -sd' ')" '
+            BEGIN { n = split(bundled, ids, " "); for (i = 1; i <= n; i++) own[ids[i]] = 1 }
+            {
+              key = ($1 in own) ? $1 : "nextcloud/server"
+              path = ($1 in own) ? $2 : ($1 == "core" || $1 == "settings" ? $1 : "apps/" $1) "/" $2
+              files[key] = files[key] ? files[key] ", " path : path
+            }
+            END { for (k in files) print k "\t" files[k] }
+          ' "$DEV_FILES_REPORT" | sort > "$RUNNER_TEMP/dev-files-by-owner.tsv"
           {
             echo "## Dev files removed by the release list"
             echo ""
-            echo "These shipped past the app's own \`.nextcloudignore\` and should be added to it."
+            echo "These shipped past the repository's own \`.nextcloudignore\` and should be added to it."
             echo ""
-            echo "| App | Files |"
+            echo "| Repository | Files |"
             echo "|---|---|"
-            awk -F'\t' '{ a[$1] = a[$1] ? a[$1] ", `" $2 "`" : "`" $2 "`" } END { for (k in a) print "| " k " | " a[k] " |" }' "$DEV_FILES_REPORT" | sort
+            while IFS=$'\t' read -r owner files; do
+              echo "| ${owner} | ${files} |"
+            done < "$RUNNER_TEMP/dev-files-by-owner.tsv"
           } >> "$GITHUB_STEP_SUMMARY"
           # GitHub shows at most 10 warnings per step; the summary has them all.
-          awk -F'\t' '{ a[$1] = a[$1] ? a[$1] ", " $2 : $2 } END { for (k in a) print k "\t" a[k] }' "$DEV_FILES_REPORT" | sort \
-            | while IFS=$'\t' read -r app files; do
-                echo "::warning title=${app}: incomplete .nextcloudignore::${files}"
-              done
+          while IFS=$'\t' read -r owner files; do
+            echo "::warning title=${owner}: incomplete .nextcloudignore::${files}"
+          done < "$RUNNER_TEMP/dev-files-by-owner.tsv"
 
       - name: Update version.php
         run: |
