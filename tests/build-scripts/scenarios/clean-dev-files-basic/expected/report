@@ -1,0 +1,9 @@
+app	.github
+app	jsconfig.json
+app	Makefile
+app	README.md
+app	screenshots
+app	src
+app	tests
+app	.eslintrc.json
+app	webpack.config.js

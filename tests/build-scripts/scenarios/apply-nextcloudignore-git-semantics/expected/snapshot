@@ -1,0 +1,11 @@
+./.nextcloudignore
+./appinfo/info.xml
+./composer.json
+./composer.lock
+./js/other/web/viewer.html
+./js/pdfjs/build/pdf.mjs
+./js/pdfjs/web/viewer.mjs
+./lib/Foo.php
+./package-lock.json
+./package.json
+./vendor/autoload.php

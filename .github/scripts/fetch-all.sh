@@ -49,7 +49,6 @@ rm -rf "$OUTPUT/example-files/.git"
 # Apps from JSON config
 jq -r '.[] | "\(.id) \(.repo) \(.composer_args // "")"' "$CONFIG" | while read -r id repo composer_args; do
   clone "$repo" "$REF" "$OUTPUT/apps/$id"
-  rm -rf "$OUTPUT/apps/$id/.git"
 
   # Run composer if there are real non-dev dependencies
   if [ -f "$OUTPUT/apps/$id/composer.json" ] && jq -e '
@@ -65,6 +64,10 @@ jq -r '.[] | "\(.id) \(.repo) \(.composer_args // "")"' "$CONFIG" | while read -
     read -r -a ARGS <<< "${composer_args:---no-dev -a --quiet}"
     (cd "$OUTPUT/apps/$id" && COMPOSER_ALLOW_SUPERUSER=1 composer install "${ARGS[@]}")
   fi
+
+  # Same order as the workflow: composer, then .nextcloudignore, then .git.
+  bash "$(dirname "$0")/apply-nextcloudignore.sh" "$OUTPUT/apps/$id"
+  rm -rf "$OUTPUT/apps/$id/.git"
 done
 
 # Docs (optional)

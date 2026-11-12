@@ -53,7 +53,8 @@ bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
 | `fetch-all.sh` | Clone server, 3rdparty, all apps, updater, skeleton, docs |
 | `assemble.sh` | Place all components into the `nextcloud/` structure |
 | `clean-server-dev-files.sh` | Remove dev files from server (uses .nextcloudignore or hardcoded list) |
-| `clean-dev-files.sh` | Remove dev files from an app directory |
+| `apply-nextcloudignore.sh` | Remove what an app's `.nextcloudignore` lists, with git semantics (needs the app's `.git`) |
+| `clean-dev-files.sh` | Remove dev files from an app directory with the release script's list; `DEV_FILES_REPORT` records what `.nextcloudignore` missed |
 | `update-version-php.sh` | Rewrite version.php with channel, build timestamp, edition |
 | `sign-release.sh` | Sign core + all apps with occ integrity commands |
 | `generate-metadata.sh` | Generate migration metadata (NC30+) |
@@ -78,6 +79,7 @@ Both scripts require `gh` CLI authenticated with a token that has repo access to
 
 - `fetch-all.sh` runs composer automatically on apps with runtime dependencies
 - `clean-server-dev-files.sh` must run before removing `.git` from the server (it uses `git ls-files` for .nextcloudignore)
+- `apply-nextcloudignore.sh` must run on each app before its `.git` is removed, for the same reason. It keeps `composer.json`, `composer.lock`, `package.json` and `package-lock.json` even when listed
 - `sign-release.sh` uses the repo's `resources/codesigning/core.crt` by default. Pass a custom cert as the third argument for testing
 - `package.sh` requires `sudo` to set file ownership to `nobody:nogroup`
 - The workflow adds parallelism (fetches all apps simultaneously) and a compare step. The scripts produce identical output

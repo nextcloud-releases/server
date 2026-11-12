@@ -1,0 +1,3 @@
+./README.md
+./appinfo/info.xml
+./playwright/e2e/files.spec.ts
