@@ -16,6 +16,7 @@
             <file>tests/TagPolicyTest.php</file>
             <file>tests/ReleaseConfigTest.php</file>
             <file>tests/ReleaseScheduleTest.php</file>
+            <file>tests/ScheduleGateTest.php</file>
             <file>tests/MajorLifecycleTest.php</file>
             <file>tests/ReleaseCadenceTest.php</file>
             <file>tests/SchedulePlanTest.php</file>

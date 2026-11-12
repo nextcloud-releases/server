@@ -129,6 +129,14 @@ final class KnpGitHubApi implements GitHubApi
         $this->client->api('gitData')->references()->update($owner, $name, "tags/{$tag}", ['sha' => $sha, 'force' => $force]);
     }
 
+    public function openPullRequestNumbers(string $repo, string $branch): array
+    {
+        [$owner, $name] = $this->split($repo);
+        // GitHub ignores a bare branch name here: head must be "owner:branch".
+        $rows = $this->client->api('pull_request')->all($owner, $name, ['state' => 'open', 'head' => "{$owner}:{$branch}"]);
+        return array_map(static fn (array $pr): int => (int) $pr['number'], $rows);
+    }
+
     private function refSha(string $repo, string $ref): ?string
     {
         [$owner, $name] = $this->split($repo);

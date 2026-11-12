@@ -11,6 +11,7 @@ use Github\Client;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use Nextcloud\ReleaseTools\GitHub\KnpGitHubApi;
 use PHPUnit\Framework\TestCase;
@@ -50,6 +51,22 @@ final class KnpGitHubApiTest extends TestCase
         ]);
 
         $this->assertSame([1, 2, 3], $api->openIssueNumbers(self::REPO, 360));
+    }
+
+    public function testOpenPullRequestsAreFilteredByOwnerQualifiedHead(): void
+    {
+        $history = [];
+        $stack = HandlerStack::create(new MockHandler([$this->page([['number' => 136]])]));
+        $stack->push(Middleware::history($history));
+        $api = new KnpGitHubApi(Client::createWithHttpClient(new GuzzleClient(['handler' => $stack])));
+
+        $this->assertSame([136], $api->openPullRequestNumbers('nextcloud-releases/server', 'chore/release-schedule'));
+
+        // A bare branch name is silently ignored by GitHub, which would then
+        // list every open pull request and block every release.
+        parse_str($history[0]['request']->getUri()->getQuery(), $query);
+        $this->assertSame('nextcloud-releases:chore/release-schedule', $query['head']);
+        $this->assertSame('open', $query['state']);
     }
 
     /** @param list<array<string, mixed>> $rows */
