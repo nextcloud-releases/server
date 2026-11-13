@@ -502,7 +502,21 @@ jobs:
         run: |
           bash _config/.github/scripts/package.sh \
             /tmp/nextcloud "${{ needs.init.outputs.version }}" "$GITHUB_WORKSPACE/releases"
-          rm -rf _config
+
+      - name: GPG-sign archives
+        env:
+          GPG_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "$GPG_KEY" ]; then
+            echo "::warning::GPG_PRIVATE_KEY not set, skipping GPG signatures"
+            exit 0
+          fi
+          GNUPGHOME=$(mktemp -d)
+          export GNUPGHOME
+          echo "$GPG_KEY" | gpg --batch --quiet --import
+          bash _config/.github/scripts/gpg-sign.sh \
+            "$GITHUB_WORKSPACE/releases" "${{ needs.init.outputs.version }}"
+          rm -rf "$GNUPGHOME"
 
       - name: Sign archives for updater server
         env:

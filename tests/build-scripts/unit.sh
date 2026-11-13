@@ -46,6 +46,49 @@ echo "--- package.sh: generate_checksums ---"
 	exit $rc
 ) && PASS=$((PASS + 1)) || FAIL=$((FAIL + 1))
 
+echo "--- package.sh: generate_checksums with metadata ---"
+(
+	set +e
+	# shellcheck source=/dev/null
+	source "$SCRIPTS/package.sh"
+	work=$(mktemp -d)
+	echo "archive-bz2" > "$work/nextcloud-9.9.9.tar.bz2"
+	echo "archive-zip" > "$work/nextcloud-9.9.9.zip"
+	echo '{"migrations":[]}' > "$work/nextcloud-9.9.9.metadata"
+	generate_checksums "$work" "9.9.9"
+	rc=0
+	# Same shape as the release script: archive line, then metadata line.
+	for ext in sha256 sha512 md5; do
+		f="$work/nextcloud-9.9.9.zip.${ext}"
+		names=$(awk '{print $2}' "$f" | paste -sd' ')
+		[[ "$names" == "nextcloud-9.9.9.zip nextcloud-9.9.9.metadata" ]] || { echo "  FAIL: $ext lists '$names'"; rc=1; }
+	done
+	( cd "$work" && sha512sum -c nextcloud-9.9.9.tar.bz2.sha512 >/dev/null 2>&1 ) || { echo "  FAIL: sha512 with metadata does not verify"; rc=1; }
+	[[ $rc -eq 0 ]] && echo "  ok: metadata sums appended and verify" || true
+	exit $rc
+) && PASS=$((PASS + 1)) || FAIL=$((FAIL + 1))
+
+echo "--- gpg-sign.sh ---"
+(
+	set +e
+	work=$(mktemp -d)
+	GNUPGHOME=$(mktemp -d)
+	export GNUPGHOME
+	gpg --batch --quiet --passphrase '' --quick-gen-key 'Release Test <test@example.invalid>' ed25519 sign 1d >/dev/null 2>&1
+	echo "archive-bz2" > "$work/nextcloud-9.9.9.tar.bz2"
+	echo "archive-zip" > "$work/nextcloud-9.9.9.zip"
+	bash "$SCRIPTS/gpg-sign.sh" "$work" "9.9.9" >/dev/null
+	rc=0
+	for base in tar.bz2 zip; do
+		gpg --batch --quiet --verify "$work/nextcloud-9.9.9.${base}.asc" "$work/nextcloud-9.9.9.${base}" 2>/dev/null \
+			|| { echo "  FAIL: ${base}.asc does not verify"; rc=1; }
+	done
+	grep -q 'BEGIN PGP SIGNATURE' "$work/nextcloud-9.9.9.zip.asc" || { echo "  FAIL: .asc is not armored"; rc=1; }
+	rm -rf "$GNUPGHOME"
+	[[ $rc -eq 0 ]] && echo "  ok: armored signatures verify" || true
+	exit $rc
+) && PASS=$((PASS + 1)) || FAIL=$((FAIL + 1))
+
 echo "--- sign-release.sh: default_cert ---"
 (
 	set +e

@@ -44,6 +44,9 @@ bash "$SCRIPTS/generate-metadata.sh" /tmp/nextcloud "$VERSION" ./releases
 
 # 8. Package (creates tar.bz2, zip, checksums)
 bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
+
+# 9. GPG signatures (optional, signs with your default secret key)
+bash "$SCRIPTS/gpg-sign.sh" ./releases "$VERSION"
 ```
 
 ## Scripts
@@ -59,7 +62,8 @@ bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
 | `update-version-php.sh` | Rewrite version.php with channel, build timestamp, edition |
 | `sign-release.sh` | Sign core + all apps with occ integrity commands |
 | `generate-metadata.sh` | Generate migration metadata (NC30+) |
-| `package.sh` | Set permissions, create tar.bz2 + zip, generate checksums |
+| `package.sh` | Set permissions, create tar.bz2 + zip, generate checksums (including the `.metadata` file's) |
+| `gpg-sign.sh` | Write `.asc` GPG signatures for the archives |
 
 > Milestone management, repository tagging and the updater-server PR have moved
 > to the unit-tested PHP package in [`tools/release/`](../../tools/release/README.md)
