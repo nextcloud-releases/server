@@ -10,6 +10,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use Nextcloud\ReleaseTools\Command\MilestonesAuditCommand;
 use Nextcloud\ReleaseTools\Command\MilestonesUpdateCommand;
+use Nextcloud\ReleaseTools\Command\PreflightCommand;
 use Nextcloud\ReleaseTools\Command\RepoTagCommand;
 use Nextcloud\ReleaseTools\Command\ScheduleCheckCommand;
 use Nextcloud\ReleaseTools\Command\ScheduleExtendCommand;
@@ -19,6 +20,7 @@ use Symfony\Component\Console\Application;
 $app = new Application('nextcloud release-tools');
 $app->add(new MilestonesUpdateCommand());
 $app->add(new MilestonesAuditCommand());
+$app->add(new PreflightCommand());
 $app->add(new RepoTagCommand());
 $app->add(new ScheduleCheckCommand());
 $app->add(new ScheduleExtendCommand());

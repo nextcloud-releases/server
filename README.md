@@ -153,6 +153,9 @@ are reported as a warning. Details and worked examples are in
 
 All of these live under the Actions tab and take a tag, except the schedule one.
 
+- **Release pipeline**: takes the version without `v` (`35.0.4`). Check `dry run`
+  to only run the preflight checks, e.g. the day before a release.
+
 - **Tag all repositories**: check `force` to overwrite existing tags (server
   repositories are never re-tagged), or `dry run` to preview.
 - **Build and compare release**: rebuilds and diffs against the release script's

@@ -137,6 +137,18 @@ final class KnpGitHubApi implements GitHubApi
         return array_map(static fn (array $pr): int => (int) $pr['number'], $rows);
     }
 
+    public function fileContent(string $repo, string $path, string $ref): ?string
+    {
+        [$owner, $name] = $this->split($repo);
+        try {
+            $file = $this->client->api('repo')->contents()->show($owner, $name, $path, $ref);
+        } catch (RuntimeException) {
+            return null;
+        }
+        $decoded = base64_decode((string) ($file['content'] ?? ''), true);
+        return $decoded === false ? null : $decoded;
+    }
+
     private function refSha(string $repo, string $ref): ?string
     {
         [$owner, $name] = $this->split($repo);

@@ -28,6 +28,8 @@ final class FakeGitHubApi implements GitHubApi
     /** @var array<string, array<string, string>> repo => branch => sha */
     private array $branches = [];
 
+    /** @var array<string, array<string, array<string, string>>> repo => ref => path => content */
+    private array $files = [];
     /** @var array<string, array<string, list<int>>> repo => head branch => open pull request numbers */
     private array $pulls = [];
 
@@ -58,6 +60,11 @@ final class FakeGitHubApi implements GitHubApi
         if ($default) {
             $this->defaultBranches[$repo] = $branch;
         }
+    }
+
+    public function seedFile(string $repo, string $ref, string $path, string $content): void
+    {
+        $this->files[$repo][$ref][$path] = $content;
     }
 
     public function seedPullRequest(string $repo, string $branch, int $number): void
@@ -162,5 +169,10 @@ final class FakeGitHubApi implements GitHubApi
     public function openPullRequestNumbers(string $repo, string $branch): array
     {
         return $this->pulls[$repo][$branch] ?? [];
+    }
+
+    public function fileContent(string $repo, string $path, string $ref): ?string
+    {
+        return $this->files[$repo][$ref][$path] ?? null;
     }
 }
