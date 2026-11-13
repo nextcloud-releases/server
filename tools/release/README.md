@@ -99,6 +99,20 @@ twice, or a week late, converges on the same file. Dates are chained from the
 round date of the version in flight, taken from its schedule entry when it has
 one and otherwise from its milestone's due date.
 
+`schedule:check` runs before a release is tagged and fails a stable release the
+milestone update would later reject: the `chore/release-schedule` pull request
+is still open, or the next patch milestone has no date and the release is not
+the last of its series. It resolves dates with the same code as
+`milestones:update`, so the two cannot disagree. Pre-releases always pass.
+
+```bash
+GH_TOKEN=... php bin/console schedule:check v34.0.3 release-schedule.json
+```
+
+```
+No due date for 'Nextcloud 34.0.4'. Add it to the release schedule (release-schedule.json) or pass it explicitly.
+```
+
 It never re-dates an entry that already has a date, and chains from whatever
 date is there, so a correction taken from the wiki is preserved rather than
 overwritten by the cadence. It schedules nothing past a major's maintenance

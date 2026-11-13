@@ -12,7 +12,39 @@ on:
         required: true
 
 jobs:
+  # Stops a stable release before anything is tagged when release-schedule.json
+  # is not ready for it, instead of failing the milestone update after the
+  # release has shipped. Pre-releases pass straight through.
+  preflight:
+    if: startsWith(inputs.tag, 'v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout config
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install release-tools
+        run: composer install --no-interaction --no-progress --no-dev
+        working-directory: tools/release
+
+      - name: Check the release schedule
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: php tools/release/bin/console schedule:check "$TAG" release-schedule.json
+
   tag:
+    needs: preflight
     if: startsWith(inputs.tag, 'v')
     uses: ./.github/workflows/release-tag.yml
     with:
@@ -73,7 +105,7 @@ jobs:
     permissions:
       contents: none
     runs-on: ubuntu-latest
-    needs: [tag, changelog, build, updater, schedule, milestones]
+    needs: [preflight, tag, changelog, build, updater, schedule, milestones]
 
     if: always()
 

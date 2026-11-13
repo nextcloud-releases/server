@@ -54,9 +54,11 @@ tests. Both suites run on every push to `main` and every pull request.
 ## Before a release
 
 > [!WARNING]
-> A stable release whose next patch milestone has no due date in
-> `release-schedule.json` **fails the milestones step on release day**. The
-> release still ships, but its milestone is left open and its issues unmoved.
+> A stable release **stops before anything is tagged** while the
+> release-schedule pull request is open, or while its next patch milestone has
+> no due date in `release-schedule.json` (unless it is the last release of its
+> series). Pre-releases are never stopped. Run the check yourself with
+> `php tools/release/bin/console schedule:check vX.Y.Z release-schedule.json`.
 
 1. **The open release-schedule pull request is merged.** The candidate a week
    earlier opened one with the dates this release needs, so merging it is

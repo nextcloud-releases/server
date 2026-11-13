@@ -28,6 +28,9 @@ final class FakeGitHubApi implements GitHubApi
     /** @var array<string, array<string, string>> repo => branch => sha */
     private array $branches = [];
 
+    /** @var array<string, array<string, list<int>>> repo => head branch => open pull request numbers */
+    private array $pulls = [];
+
     /** @var list<array<string, mixed>> ordered mutation log, one structured entry per call */
     public array $journal = [];
 
@@ -55,6 +58,11 @@ final class FakeGitHubApi implements GitHubApi
         if ($default) {
             $this->defaultBranches[$repo] = $branch;
         }
+    }
+
+    public function seedPullRequest(string $repo, string $branch, int $number): void
+    {
+        $this->pulls[$repo][$branch][] = $number;
     }
 
     public function listMilestones(string $repo): array
@@ -149,5 +157,10 @@ final class FakeGitHubApi implements GitHubApi
     {
         $this->tags[$repo][$tag] = $sha;
         $this->journal[] = ['action' => 'retag', 'repo' => $repo, 'tag' => $tag, 'sha' => $sha, 'force' => $force];
+    }
+
+    public function openPullRequestNumbers(string $repo, string $branch): array
+    {
+        return $this->pulls[$repo][$branch] ?? [];
     }
 }

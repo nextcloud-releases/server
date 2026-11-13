@@ -45,4 +45,7 @@ interface GitHubApi
 
     /** Move an existing tag; $force allows non-fast-forward replacement. */
     public function updateTag(string $repo, string $tag, string $sha, bool $force): void;
+
+    /** @return list<int> numbers of the open pull requests whose head is $branch in $repo */
+    public function openPullRequestNumbers(string $repo, string $branch): array;
 }
