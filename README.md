@@ -164,36 +164,73 @@ All of these live under the Actions tab and take a tag, except the schedule one.
 
 ## Migration status
 
-The old release script still does the real work. It builds the archives people
-download and uploads them to the download server. This pipeline shadows it:
-every release gets built twice, and the two results are compared byte for byte
-to show this one would have produced exactly the same thing. Nothing it builds
-is published.
+The legacy release script still builds, signs and uploads every release while
+this pipeline rebuilds in shadow and compares. This tracks what's left for the
+pipeline to take over completely and for the script to be deleted. Each pull
+request ticks its box; the section goes away with the last one.
 
-The goal is to delete that script and let this pipeline do the whole job from
-the tag onwards, upload included. Turning publishing on is the last step.
+```mermaid
+flowchart TD
+    dispatch(["Release team member dispatches<br/><code>35.0.4</code>"])
 
-<details>
-<summary><b>Why the cutover is staged, and what is left</b></summary>
+    subgraph gate["Before anything changes"]
+        preflight["<b>preflight</b><br/>version format, config JSON,<br/>tag not taken, version.php,<br/>schedule:check"]
+        approve{{"<b>approve</b><br/>env <code>release</code><br/>team <code>releases</code>, no self-review"}}
+        preflight -->|"dry run stops here"| approve
+    end
 
-The cutover is staged because a release spans roughly 30 repositories, code
-signing, and the update channel every server consumes. The migration moves logic
-out of untested shell into tested code, keeps test artifacts diffable, and runs
-the suites on every change, so each piece is verified before publishing is handed
-over.
+    dispatch --> preflight
 
-Remaining before the legacy script can be retired:
+    approve --> tag["<b>tag</b><br/>server + every app"]
+    tag --> draft["<b>draft release</b><br/>nextcloud-releases/server"]
+    tag --> milestones["<b>milestones</b><br/>stable + beta1"]
+    tag --> schedule["<b>schedule</b><br/>RCs: schedule PR"]
 
-- **Publishing from the workflow.** Build and signing are implemented; upload to
-  the download server is not. This is the final cutover step.
-- **Build parity.** Continue diffing workflow output against the legacy script
-  across all release shapes: stable, candidate, first beta, new major.
-- **Workflow-glue hardening.** The shell in the workflow steps (version-file
-  fetch and parse, clone, `make`, pull request creation) is untested and has
-  known issues, including a `git push --force` without a divergence check and a
-  token passed through a git URL.
-- **Changelog generator tests.** The PHP changelog tool has no unit tests.
-- **GPG signatures.** Published archives are not GPG-signed for independent
-  verification.
+    draft --> changelog["<b>changelog</b><br/>release body,<br/>files if too long"]
 
-</details>
+    subgraph build["build"]
+        fetch["fetch server, 3rdparty,<br/>apps, updater, docs"]
+        assemble["assemble + .nextcloudignore<br/>+ dev-files.txt"]
+        sign["<b>sign</b><br/>dedicated job"]
+        package["package<br/>tar.bz2, zip, checksums,<br/>.sig, .asc"]
+        fetch --> assemble --> sign --> package
+    end
+
+    changelog --> fetch
+    package --> publish["<b>publish</b><br/>attach assets,<br/>un-draft release"]
+    publish --> pull[("download server<br/>pulls + verifies<br/>GPG and sha512")]
+    pull --> verify["<b>verify-download</b><br/>file served,<br/>hash matches"]
+    verify --> updater["<b>updater</b><br/>updater_server PR"]
+    publish --> pointer["pointer release<br/>on nextcloud/server"]
+
+    classDef gateNode fill:#fff3cd,stroke:#b8860b,stroke-width:2px,color:#000
+    classDef external fill:#e7f1ff,stroke:#3b6fb6,color:#000
+    classDef side fill:#f3f3f3,stroke:#999,color:#000
+    class preflight,approve gateNode
+    class pull external
+    class milestones,schedule,pointer side
+```
+
+- [ ] Start and approval
+  - [ ] Preflight: every early check, version without `v`
+  - [ ] Dry run that stops before approval
+  - [ ] Single approval through the `release` environment, limited to `main`
+  - [ ] Re-runs pick up where a failed run stopped
+  - [ ] `force` redoes a release on a new commit, cleaned up after approval, refused
+        once updater_server `production` lists this version or a later one
+- [ ] Build and signing
+  - [ ] Signing flow for the official key
+  - [ ] GPG signatures and full checksum files
+  - [ ] Symlinks kept through the build
+  - [ ] Enterprise build: decide where it lives
+- [ ] Release
+  - [ ] Pipeline creates the tags and the draft release
+  - [ ] Publish from the pipeline
+  - [ ] Pointer release on nextcloud/server
+  - [ ] Updater job safe to re-run
+- [ ] Distribution
+  - [ ] Download server pulls releases from GitHub
+  - [ ] Pipeline checks the download is served
+- [ ] Cutover
+  - [ ] One clean round in shadow
+  - [ ] Delete the legacy script and the compare step
