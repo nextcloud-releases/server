@@ -3,19 +3,22 @@
 # SPDX-License-Identifier: MIT
 #
 # Snapshot test runner for the release build scripts (assemble.sh,
-# clean-dev-files.sh, update-version-php.sh).
+# apply-nextcloudignore.sh, clean-dev-files.sh, update-version-php.sh).
 #
 # These scripts only rearrange/clean a directory tree, so each scenario copies a
 # fixture tree, runs the script, and snapshots the result:
-#   - assemble / clean-dev-files -> a manifest (sorted relative file paths)
+#   - assemble / clean-dev-files / apply-nextcloudignore -> a manifest (sorted
+#     relative file paths); clean-dev-files also snapshots its removal report
+#     when expected/report exists
 #   - update-version-php         -> the rewritten version.php, build date normalized
 #
 # Usage:
 #   run.sh [--update]    # --update regenerates expected/ from actual output
 #
 # Each scenario is a directory under scenarios/ containing:
-#   args.env     - SCRIPT (assemble|clean-dev-files|update-version-php) + extras
-#   fixture/     - the input tree
+#   args.env     - SCRIPT (assemble|apply-nextcloudignore|clean-dev-files|update-version-php) + extras
+#   fixture/     - the input tree (apply-nextcloudignore: tracked by a fresh git
+#                  repo, except paths listed in UNTRACKED)
 #   expected/snapshot - the expected manifest or normalized version.php
 
 set -euo pipefail
@@ -43,8 +46,9 @@ run_scenario() {
 	name=$(basename "$dir")
 	echo "--- ${name} ---"
 
-	local SCRIPT CHANNEL BRANCH
+	local SCRIPT CHANNEL BRANCH UNTRACKED
 	SCRIPT=""
+	UNTRACKED=""
 	CHANNEL="stable"
 	BRANCH="stable34"
 	# shellcheck source=/dev/null
@@ -65,9 +69,29 @@ run_scenario() {
 			manifest "$out" > "$snapshot"
 			rm -rf "$outparent"
 			;;
-		clean-dev-files)
-			bash "$SCRIPTS/clean-dev-files.sh" "$work" > /dev/null
+		apply-nextcloudignore)
+			# Fixtures cannot ship a .git, so track the tree here. UNTRACKED
+			# paths stand in for composer output, which is never committed.
+			git -C "$work" init -q
+			git -C "$work" add -A
+			local path
+			for path in $UNTRACKED; do
+				git -C "$work" rm -q --cached -- "$path"
+			done
+			bash "$SCRIPTS/apply-nextcloudignore.sh" "$work" > /dev/null
+			rm -rf "$work/.git"
 			manifest "$work" > "$snapshot"
+			;;
+		clean-dev-files)
+			local report
+			report=$(mktemp)
+			DEV_FILES_REPORT="$report" bash "$SCRIPTS/clean-dev-files.sh" "$work" > /dev/null
+			manifest "$work" > "$snapshot"
+			if [[ -f "$dir/expected/report" ]] || [[ "$UPDATE_MODE" == "true" && -s "$report" ]]; then
+				# The report names the directory; fixtures run under a temp name.
+				sed "s/^$(basename "$work")\t/app\t/" "$report" > "$snapshot.report"
+			fi
+			rm -f "$report"
 			;;
 		clean-server-dev-files)
 			bash "$SCRIPTS/clean-server-dev-files.sh" "$work" > /dev/null
@@ -88,9 +112,11 @@ run_scenario() {
 	if [[ "$UPDATE_MODE" == "true" ]]; then
 		mkdir -p "$dir/expected"
 		cp "$snapshot" "$dir/expected/snapshot"
+		[[ -f "$snapshot.report" ]] && cp "$snapshot.report" "$dir/expected/report"
 		echo "  UPDATED expected snapshot"
 		PASS=$((PASS + 1))
-	elif diff -u "$dir/expected/snapshot" "$snapshot"; then
+	elif diff -u "$dir/expected/snapshot" "$snapshot" \
+		&& { [[ ! -f "$dir/expected/report" ]] || diff -u "$dir/expected/report" "$snapshot.report"; }; then
 		echo "  PASS"
 		PASS=$((PASS + 1))
 	else
@@ -98,7 +124,7 @@ run_scenario() {
 		FAIL=$((FAIL + 1)); ERRORS="${ERRORS}\n  ${name}"
 	fi
 
-	rm -rf "$work" "$snapshot"
+	rm -rf "$work" "$snapshot" "$snapshot.report"
 }
 
 for scenario in "$SCENARIOS_DIR"/*/; do

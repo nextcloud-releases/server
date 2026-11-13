@@ -1,0 +1,11 @@
+# Patterns with a slash in the middle are relative to this file (pdf.js demo viewer)
+js/pdfjs/web/viewer.html
+js/pdfjs/web/compressed.tracemonkey-pldi-09.pdf
+/playwright
+/docs/
+*.log
+# Listed, but kept for traceability
+/composer.json
+/composer.lock
+/package.json
+/package-lock.json

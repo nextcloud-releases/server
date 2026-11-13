@@ -2,96 +2,45 @@
 # SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
 # SPDX-License-Identifier: MIT
 #
-# Clean development files from an app or component directory.
+# Remove development files from an app or component directory, using the
+# patterns in dev-files.txt. The app's own .nextcloudignore is applied earlier
+# by apply-nextcloudignore.sh, so anything this still removes is something the
+# app's .nextcloudignore should list.
+#
 # Usage: clean-dev-files.sh <directory>
+# With DEV_FILES_REPORT set, appends "<dir name><TAB>/<path>" for each removal.
 
 set -e
 
+LIST="$(cd "$(dirname "$0")" && pwd)/dev-files.txt"
 DIR="${1:-.}"
 cd "$DIR"
+APP=$(basename "$(pwd)")
 
-# Files to preserve even if .nextcloudignore lists them
-KEEP_FILES=(composer.json composer.lock package.json package-lock.json)
-
-# Process .nextcloudignore if present
-if [ -f ".nextcloudignore" ]; then
-  APP_DIR=$(pwd)
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    pattern=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/\r$//')
-    [[ -z "$pattern" || "$pattern" == \#* ]] && continue
-
-    # Check if this pattern targets a preserved file
-    # e.g. /composer.* would match composer.json — skip the whole pattern
-    clean="${pattern#/}"
-    skip=false
-    for keep in "${KEEP_FILES[@]}"; do
-      # $clean is an intentional glob pattern (e.g. composer.*) matched against
-      # the preserved file name, so the RHS must stay unquoted.
-      # shellcheck disable=SC2053,SC2254
-      if [[ "$keep" == $clean ]]; then
-        skip=true
-        break
-      fi
-    done
-    $skip && continue
-
-    if [[ "$pattern" == /* ]]; then
-      pattern="${pattern#/}"
-      # shellcheck disable=SC2086
-      for match in $APP_DIR/$pattern; do
-        [ -e "$match" ] && rm -rf "$match"
-      done
-    else
-      find "$APP_DIR" -name "$pattern" -exec rm -rf {} + 2>/dev/null || true
-    fi
-  done < .nextcloudignore
-fi
-
-# Remove dev file patterns (synced with release script's getDataToBeRemovedFromAppFolders)
-DEV_PATTERNS=(
-  .babelrc .codecov.yml .devcontainer .drone.yml .editorconfig .eslintignore
-  .git/ .gitattributes .github .gitignore .git-blame-ignore-revs
-  .jshintrc .l10nignore .lgtm .nextcloudignore .npmignore .noopenapi
-  .php_cs.dist .php-cs-fixer.dist.php .prettierignore .scrutinizer.yml
-  .stylelintignore .travis.yml .tx/
-  build-js/ build.xml
-  check-handlebars-templates.sh codecov.yml compile-handlebars-templates.sh
-  CONTRIBUTING.md
-  cypress.json cypress/
-  issue_template.md jest-raw-loader.js jsconfig.json
-  krankerl.toml l10n/.gitkeep Makefile phpDocumentor.sh psalm.xml
-  README.md rector.php renovate.json screenshots/ src/ testConfiguration.json
-  tests/ vendor-bin/
-  webpack.common.js webpack.dev.js webpack.js webpack.prod.js
-)
-
-for pattern in "${DEV_PATTERNS[@]}"; do
-  rm -rf "$pattern"
-  if [[ "$pattern" != */ ]]; then
-    rm -rf "${pattern}.license"
+remove() {
+  [ -e "$1" ] || [ -L "$1" ] || return 0
+  rm -rf "$1"
+  # An app cannot be expected to list its .nextcloudignore in itself.
+  if [ -n "${DEV_FILES_REPORT:-}" ] && [ "$1" != .nextcloudignore ]; then
+    printf '%s\t/%s\n' "$APP" "$1" >> "$DEV_FILES_REPORT"
   fi
-done
+}
 
-# JavaScript config files: cross-product of base names × extensions
-# (matches release script's $javascriptConfigs × $suffix loop)
-JS_CONFIG_BASES=(
-  .babelrc .eslintrc .prettierrc .stylelintrc
-  babel.config cypress.config eslint.config jest.config jsconfig
-  oxlintrc oxlint.config playwright.config postcss.config prettier.config
-  rspack.config stylelint.config tsconfig vite.config vitest.config
-  webpack webpack.config
-)
-JS_EXTENSIONS=(.json .js .mjs .cjs .ts .mts .cts)
-
-for base in "${JS_CONFIG_BASES[@]}"; do
-  for ext in "${JS_EXTENSIONS[@]}"; do
-    rm -rf "${base}${ext}"
-    rm -rf "${base}${ext}.license"
+shopt -s nullglob
+while IFS= read -r pattern || [ -n "$pattern" ]; do
+  [[ -z "$pattern" || "$pattern" == \#* ]] && continue
+  pattern="${pattern#/}"
+  # Unquoted on purpose: the list holds shell globs.
+  # shellcheck disable=SC2206
+  matches=($pattern)
+  for match in "${matches[@]}"; do
+    remove "$match"
+    [[ "$match" == *.license ]] || remove "${match}.license"
   done
-done
+done < "$LIST"
+shopt -u nullglob
 
 # Remove REUSE sidecar files for sourcemaps. Sourcemaps (*.map) ship in the
 # release, but their *.map.license sidecars are REUSE metadata that only matters
-# in source repos — pure clutter in the tarball.
+# in source repos, pure clutter in the tarball.
 find . -type f -name '*.map.license' -delete
-

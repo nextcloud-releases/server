@@ -1,0 +1,15 @@
+app	/.eslintrc.json
+app	/.github
+app	/AGENTS.md
+app	/docs
+app	/jsconfig.json
+app	/Makefile
+app	/phpunit.xml
+app	/README.md
+app	/screenshots
+app	/src
+app	/tests
+app	/tsconfig.app.json
+app	/vite.config.ts
+app	/vite.config.ts.license
+app	/webpack.config.js

@@ -273,6 +273,20 @@ jobs:
         # that vendor deps via post-install). Override per-app via composer_args in JSON.
         run: composer install ${{ matrix.composer_args != '' && matrix.composer_args || '--no-dev -a --quiet' }}
 
+      - name: Checkout scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: _scripts
+          sparse-checkout: .github/scripts
+
+      # Needs .git for gitignore semantics. The script runs from RUNNER_TEMP so
+      # an app's patterns cannot match its own checkout.
+      - name: Apply .nextcloudignore
+        run: |
+          cp _scripts/.github/scripts/apply-nextcloudignore.sh "$RUNNER_TEMP/"
+          rm -rf _scripts
+          bash "$RUNNER_TEMP/apply-nextcloudignore.sh" .
+
       - name: Remove .git
         run: rm -rf .git
 
@@ -400,18 +414,58 @@ jobs:
           rm -rf /tmp/build
 
       - name: Clean dev files from all apps
+        env:
+          DEV_FILES_REPORT: ${{ runner.temp }}/dev-files.tsv
         run: |
           # Run on ALL app dirs (matrix apps + core apps from server),
           # plus core/ and settings/ which also contain dev files.
-          # Matrix apps may already be partially cleaned by .nextcloudignore
-          # during fetch, but core apps from the server need this pass.
+          # Matrix apps already had their .nextcloudignore applied during
+          # fetch; whatever this still removes, their .nextcloudignore misses.
           SCRIPT="_config/.github/scripts/clean-dev-files.sh"
+          : > "$DEV_FILES_REPORT"
           shopt -s nullglob
           for dir in /tmp/nextcloud/apps/*/ /tmp/nextcloud/core/ /tmp/nextcloud/settings/; do
             [ -d "$dir" ] || continue
             bash "$SCRIPT" "$dir"
           done
           shopt -u nullglob
+
+      - name: Report dev files .nextcloudignore missed
+        env:
+          DEV_FILES_REPORT: ${{ runner.temp }}/dev-files.tsv
+          BRANCH: ${{ needs.init.outputs.branch }}
+          MAJOR: ${{ needs.init.outputs.major }}
+        run: |
+          [ -s "$DEV_FILES_REPORT" ] || exit 0
+          if [ "$BRANCH" = master ]; then CONFIG=_config/master.json; else CONFIG="_config/stable${MAJOR}.json"; fi
+          # Bundled apps own their .nextcloudignore. Everything else (core,
+          # settings, shipped apps) comes from server's root .nextcloudignore.
+          awk -F'\t' -v bundled="$(jq -r '.[].id' "$CONFIG" | paste -sd' ')" '
+            BEGIN { n = split(bundled, ids, " "); for (i = 1; i <= n; i++) own[ids[i]] = 1 }
+            {
+              key = ($1 in own) ? $1 : "nextcloud/server"
+              path = ($1 in own) ? $2 : "/" ($1 == "core" || $1 == "settings" ? $1 : "apps/" $1) $2
+              files[key] = files[key] ? files[key] " " path : path
+            }
+            END { for (k in files) print k "\t" files[k] }
+          ' "$DEV_FILES_REPORT" | sort > "$RUNNER_TEMP/dev-files-by-owner.tsv"
+          {
+            echo "## Dev files removed by the release list"
+            echo ""
+            echo "These matched \`.github/scripts/dev-files.txt\` after the repository's own \`.nextcloudignore\`. Add the lines below to it."
+            while IFS=$'\t' read -r owner files; do
+              echo ""
+              echo "### ${owner}"
+              echo ""
+              echo '```'
+              tr ' ' '\n' <<< "$files"
+              echo '```'
+            done < "$RUNNER_TEMP/dev-files-by-owner.tsv"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # GitHub shows at most 10 warnings per step; the summary has them all.
+          while IFS=$'\t' read -r owner files; do
+            echo "::warning title=${owner}: incomplete .nextcloudignore::${owner}: ${files}"
+          done < "$RUNNER_TEMP/dev-files-by-owner.tsv"
 
       - name: Update version.php
         run: |
