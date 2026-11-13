@@ -197,12 +197,16 @@ jobs:
       - name: Clean dev files
         run: bash _scripts/.github/scripts/clean-server-dev-files.sh && rm -rf _scripts
 
+      # Artifact uploads follow symlinks and store their targets; a tar keeps
+      # them as links, like the release script's checkouts.
+      - name: Pack
+        run: tar -cf "$RUNNER_TEMP/artifact.tar" .
+
       - name: Upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: server
-          path: .
-          include-hidden-files: true
+          path: ${{ runner.temp }}/artifact.tar
           retention-days: 1
 
   fetch-3rdparty:
@@ -218,12 +222,16 @@ jobs:
       - name: Clean
         run: rm -rf .git .github .gitignore README.md
 
+      # Artifact uploads follow symlinks and store their targets; a tar keeps
+      # them as links, like the release script's checkouts.
+      - name: Pack
+        run: tar -cf "$RUNNER_TEMP/artifact.tar" .
+
       - name: Upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: 3rdparty
-          path: .
-          include-hidden-files: true
+          path: ${{ runner.temp }}/artifact.tar
           retention-days: 1
 
   fetch-apps:
@@ -290,12 +298,16 @@ jobs:
       - name: Remove .git
         run: rm -rf .git
 
+      # Artifact uploads follow symlinks and store their targets; a tar keeps
+      # them as links, like the release script's checkouts.
+      - name: Pack
+        run: tar -cf "$RUNNER_TEMP/artifact.tar" .
+
       - name: Upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.id }}
-          path: .
-          include-hidden-files: true
+          path: ${{ runner.temp }}/artifact.tar
           retention-days: 1
 
   fetch-updater:
@@ -323,11 +335,15 @@ jobs:
           repository: nextcloud/example-files
           ref: ${{ needs.init.outputs.ref }}
       - run: rm -rf .git
+      # Artifact uploads follow symlinks and store their targets; a tar keeps
+      # them as links, like the release script's checkouts.
+      - name: Pack
+        run: tar -cf "$RUNNER_TEMP/artifact.tar" .
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: example-files
-          path: .
-          include-hidden-files: true
+          path: ${{ runner.temp }}/artifact.tar
           retention-days: 1
 
   fetch-docs:
@@ -397,6 +413,12 @@ jobs:
 
       - name: Assemble release
         run: |
+          # Fetch jobs upload their tree as one tar so symlinks survive.
+          for archive in */artifact.tar; do
+            tar -xf "$archive" -C "$(dirname "$archive")"
+            rm "$archive"
+          done
+
           # Rearrange artifacts into build dir structure expected by assemble.sh
           mkdir -p /tmp/build/apps
           mv server /tmp/build/server

@@ -43,4 +43,4 @@ shopt -u nullglob
 # Remove REUSE sidecar files for sourcemaps. Sourcemaps (*.map) ship in the
 # release, but their *.map.license sidecars are REUSE metadata that only matters
 # in source repos, pure clutter in the tarball.
-find . -type f -name '*.map.license' -delete
+find . -name '*.map.license' \( -type f -o -type l \) -delete
