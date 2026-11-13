@@ -171,10 +171,35 @@ jobs:
           git add config/ tests/
           git commit --signoff -m "chore: add ${VERSION} to the updater server"
           gh auth setup-git
-          git push --force -u origin "$BR"
-          gh pr create --repo nextcloud-releases/updater_server --base master --head "$BR" \
-            --title "chore: add ${VERSION} to the updater server" \
-            --body "Automated PR from the release pipeline for ${TAG} (internal ${INTERNAL}, minPHP ${MIN_PHP})."
+
+          # A re-run must not fail on its own earlier push, nor overwrite
+          # commits someone added to that pull request by hand.
+          REPO=nextcloud-releases/updater_server
+          if git fetch --quiet --depth=1 origin "refs/heads/${BR}:refs/remotes/origin/${BR}" 2>/dev/null; then
+            REMOTE=$(git rev-parse "origin/${BR}")
+            if git diff --quiet "origin/${BR}" HEAD -- config/ tests/; then
+              echo "::notice::${BR} already has this update, nothing to push"
+            else
+              ME=$(git config user.email)
+              OTHERS=$(gh api "repos/${REPO}/compare/master...${BR}" --jq '.commits[].commit.author.email' | grep -vxF "$ME" | sort -u || true)
+              if [ -n "$OTHERS" ]; then
+                echo "::error::${BR} has commits from $(echo "$OTHERS" | paste -sd, -). Refusing to overwrite them; update that pull request by hand."
+                exit 1
+              fi
+              git push --force-with-lease="${BR}:${REMOTE}" -u origin "$BR" || exit 1
+            fi
+          else
+            git push -u origin "$BR" || exit 1
+          fi
+
+          OPEN=$(gh pr list --repo "$REPO" --head "$BR" --state open --json url --jq '.[0].url // empty')
+          if [ -n "$OPEN" ]; then
+            echo "::notice::Pull request already open: ${OPEN}"
+          else
+            gh pr create --repo "$REPO" --base master --head "$BR" \
+              --title "chore: add ${VERSION} to the updater server" \
+              --body "Automated PR from the release pipeline for ${TAG} (internal ${INTERNAL}, minPHP ${MIN_PHP})." || exit 1
+          fi
 
       - name: Write step summary
         if: always()
