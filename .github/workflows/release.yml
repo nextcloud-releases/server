@@ -8,19 +8,25 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g., v34.0.1)'
+        description: 'Version to release, e.g. 35.0.4'
         required: true
+      dry_run:
+        description: 'Only run the preflight checks'
+        type: boolean
+        default: false
 
 jobs:
-  # Stops a stable release before anything is tagged when release-schedule.json
-  # is not ready for it, instead of failing the milestone update after the
-  # release has shipped. Pre-releases pass straight through.
+  # Refuses a release before anything is tagged: version format, config JSON,
+  # existing tags, version.php and release-schedule.json. Until the pipeline
+  # tags on its own (PIPELINE_PUBLISHES), the legacy script dispatches with a
+  # leading v after tagging, so both are accepted then.
   preflight:
-    if: startsWith(inputs.tag, 'v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
     steps:
       - name: Checkout config
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,66 +43,64 @@ jobs:
         run: composer install --no-interaction --no-progress --no-dev
         working-directory: tools/release
 
-      - name: Check the release schedule
+      - name: Preflight checks
+        id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ inputs.tag }}
-        run: php tools/release/bin/console schedule:check "$TAG" release-schedule.json
+          VERSION: ${{ inputs.tag }}
+          SHADOW: ${{ vars.PIPELINE_PUBLISHES != 'true' && '--shadow' || '' }}
+        run: |
+          # shellcheck disable=SC2086 # SHADOW is one flag or nothing
+          php tools/release/bin/console release:preflight "$VERSION" $SHADOW
 
   tag:
     needs: preflight
-    if: startsWith(inputs.tag, 'v')
+    if: ${{ !inputs.dry_run }}
     uses: ./.github/workflows/release-tag.yml
     with:
-      tag: ${{ inputs.tag }}
+      tag: ${{ needs.preflight.outputs.tag }}
     secrets: inherit
 
   changelog:
-    needs: tag
-    if: startsWith(inputs.tag, 'v')
+    needs: [preflight, tag]
     uses: ./.github/workflows/release-changelog.yml
     with:
-      tag: ${{ inputs.tag }}
+      tag: ${{ needs.preflight.outputs.tag }}
     secrets: inherit
 
   build:
-    needs: [tag, changelog]
-    if: startsWith(inputs.tag, 'v')
+    needs: [preflight, tag, changelog]
     uses: ./.github/workflows/release-build.yml
     with:
-      tag: ${{ inputs.tag }}
+      tag: ${{ needs.preflight.outputs.tag }}
     secrets: inherit
 
   updater:
-    needs: build
-    if: startsWith(inputs.tag, 'v')
+    needs: [preflight, build]
     uses: ./.github/workflows/release-updater.yml
     with:
-      tag: ${{ inputs.tag }}
+      tag: ${{ needs.preflight.outputs.tag }}
     secrets: inherit
 
   # Runs after tagging a release candidate, roughly a week before the stable
   # release it precedes. Proposes the schedule entries that release will need,
   # as a pull request; never blocks the candidate.
   schedule:
-    needs: tag
-    if: startsWith(inputs.tag, 'v') && contains(inputs.tag, 'rc')
+    needs: [preflight, tag]
+    if: contains(needs.preflight.outputs.tag, 'rc')
     uses: ./.github/workflows/release-schedule.yml
     secrets: inherit
 
   # Runs after tagging completes. Only for stable releases and first betas.
   # Runs in parallel with changelog and build.
   milestones:
-    needs: tag
+    needs: [preflight, tag]
     if: >-
-      startsWith(inputs.tag, 'v')
-      && (
-        (!contains(inputs.tag, 'alpha') && !contains(inputs.tag, 'beta') && !contains(inputs.tag, 'rc'))
-        || endsWith(inputs.tag, 'beta1')
-      )
+      (!contains(needs.preflight.outputs.tag, 'alpha') && !contains(needs.preflight.outputs.tag, 'beta') && !contains(needs.preflight.outputs.tag, 'rc'))
+      || endsWith(needs.preflight.outputs.tag, 'beta1')
     uses: ./.github/workflows/release-milestones.yml
     with:
-      tag: ${{ inputs.tag }}
+      tag: ${{ needs.preflight.outputs.tag }}
     secrets: inherit
 
   # Single pass/fail for the whole pipeline. Milestones and Schedule each skip

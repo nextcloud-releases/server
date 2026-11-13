@@ -48,4 +48,7 @@ interface GitHubApi
 
     /** @return list<int> numbers of the open pull requests whose head is $branch in $repo */
     public function openPullRequestNumbers(string $repo, string $branch): array;
+
+    /** Raw content of a file at a ref (branch or tag), or null when either does not exist. */
+    public function fileContent(string $repo, string $path, string $ref): ?string;
 }
