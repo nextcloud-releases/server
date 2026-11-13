@@ -444,20 +444,22 @@ jobs:
             BEGIN { n = split(bundled, ids, " "); for (i = 1; i <= n; i++) own[ids[i]] = 1 }
             {
               key = ($1 in own) ? $1 : "nextcloud/server"
-              path = ($1 in own) ? $2 : ($1 == "core" || $1 == "settings" ? $1 : "apps/" $1) "/" $2
-              files[key] = files[key] ? files[key] ", " path : path
+              path = ($1 in own) ? $2 : "/" ($1 == "core" || $1 == "settings" ? $1 : "apps/" $1) $2
+              files[key] = files[key] ? files[key] " " path : path
             }
             END { for (k in files) print k "\t" files[k] }
           ' "$DEV_FILES_REPORT" | sort > "$RUNNER_TEMP/dev-files-by-owner.tsv"
           {
             echo "## Dev files removed by the release list"
             echo ""
-            echo "These shipped past the repository's own \`.nextcloudignore\` and should be added to it."
-            echo ""
-            echo "| Repository | Files |"
-            echo "|---|---|"
+            echo "These matched \`.github/scripts/dev-files.txt\` after the repository's own \`.nextcloudignore\`. Add the lines below to it."
             while IFS=$'\t' read -r owner files; do
-              echo "| ${owner} | ${files} |"
+              echo ""
+              echo "### ${owner}"
+              echo ""
+              echo '```'
+              tr ' ' '\n' <<< "$files"
+              echo '```'
             done < "$RUNNER_TEMP/dev-files-by-owner.tsv"
           } >> "$GITHUB_STEP_SUMMARY"
           # GitHub shows at most 10 warnings per step; the summary has them all.

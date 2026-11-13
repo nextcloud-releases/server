@@ -54,7 +54,8 @@ bash "$SCRIPTS/package.sh" /tmp/nextcloud "$VERSION" ./releases
 | `assemble.sh` | Place all components into the `nextcloud/` structure |
 | `clean-server-dev-files.sh` | Remove dev files from server (uses .nextcloudignore or hardcoded list) |
 | `apply-nextcloudignore.sh` | Remove what an app's `.nextcloudignore` lists, with git semantics (needs the app's `.git`) |
-| `clean-dev-files.sh` | Remove dev files from an app directory with the release script's list; `DEV_FILES_REPORT` records what `.nextcloudignore` missed |
+| `clean-dev-files.sh` | Remove the dev files listed in `dev-files.txt` from an app directory; `DEV_FILES_REPORT` records what `.nextcloudignore` missed |
+| `dev-files.txt` | The development files that must not ship, in `.nextcloudignore` syntax |
 | `update-version-php.sh` | Rewrite version.php with channel, build timestamp, edition |
 | `sign-release.sh` | Sign core + all apps with occ integrity commands |
 | `generate-metadata.sh` | Generate migration metadata (NC30+) |

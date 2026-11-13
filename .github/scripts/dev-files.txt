@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+# SPDX-License-Identifier: MIT
+#
+# Development files that must not ship. One pattern per line, relative to an
+# app root (or core/, settings/), shell globs allowed, written the way an app's
+# .nextcloudignore lists them so lines can be copied over as they are.
+#
+# clean-dev-files.sh removes every match, with its .license sidecar, and the
+# release build reports each one as missing from that app's .nextcloudignore.
+#
+# composer.json, composer.lock, package.json and package-lock.json are kept on
+# purpose: a release records what it was built from.
+
+/.babelrc*
+/.codecov.yml
+/.coderabbit.yaml
+/.devcontainer
+/.drone.yml
+/.editorconfig
+/.eslintignore
+/.eslintrc*
+/.git
+/.git-blame-ignore-revs
+/.gitattributes
+/.githooks
+/.github
+/.gitignore
+/.jshintrc
+/.l10nignore
+/.lgtm
+/.nextcloudignore
+/.noopenapi
+/.npmignore
+/.npmrc
+/.nvmrc
+/.php-cs-fixer.cache
+/.php-cs-fixer.dist.php
+/.php_cs.dist
+/.pre-commit-config.yaml
+/.prettierignore
+/.prettierrc*
+/.scrutinizer.yml
+/.stylelintignore
+/.stylelintrc*
+/.travis.yml
+/.tx
+/AGENTS.md
+/babel.config.*
+/build-js
+/build.xml
+/check-handlebars-templates.sh
+/CLAUDE.md
+/CODE_OF_CONDUCT.md
+/codecov.yml
+/compile-handlebars-templates.sh
+/CONTRIBUTING.md
+/cypress
+/cypress.config.*
+/cypress.json
+/docs
+/eslint.config.*
+/issue_template.md
+/jest-raw-loader.js
+/jest.config.*
+/jest.setup.*
+/jsconfig.*
+/krankerl.toml
+/l10n/.gitkeep
+/Makefile
+/oxlint.config.*
+/oxlintrc.*
+/phpDocumentor.sh
+/phpunit*.xml
+/phpunit.xml.dist
+/playwright
+/playwright.config.*
+/postcss.config.*
+/prettier.config.*
+/psalm-baseline.xml
+/psalm.xml
+/README.md
+/rector.php
+/renovate.json
+/rspack.config.*
+/screenshots
+/src
+/stylelint.config.*
+/testConfiguration.json
+/TESTING.md
+/tests
+/tsconfig.*
+/vendor-bin
+/vite.config.*
+/vitest.config.*
+/vitest.setup.*
+/webpack.*
