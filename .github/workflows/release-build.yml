@@ -462,7 +462,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           # GitHub shows at most 10 warnings per step; the summary has them all.
           while IFS=$'\t' read -r owner files; do
-            echo "::warning title=${owner}: incomplete .nextcloudignore::${files}"
+            echo "::warning title=${owner}: incomplete .nextcloudignore::${owner}: ${files}"
           done < "$RUNNER_TEMP/dev-files-by-owner.tsv"
 
       - name: Update version.php
