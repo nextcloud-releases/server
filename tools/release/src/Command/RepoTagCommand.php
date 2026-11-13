@@ -28,6 +28,7 @@ final class RepoTagCommand extends Command
             ->addArgument('config', InputArgument::REQUIRED, 'Config file (stableXX.json / master.json)')
             ->addArgument('tag-only', InputArgument::REQUIRED, 'tag-only.json path')
             ->addOption('force', null, InputOption::VALUE_NONE, 'Recreate existing tags (never on the server repos)')
+            ->addOption('retag-protected', null, InputOption::VALUE_NONE, 'With --force, also move the server tags. Only after release:preflight --force passed')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Preview without changing anything');
     }
 
@@ -37,6 +38,7 @@ final class RepoTagCommand extends Command
         $branch = (string) $input->getArgument('branch');
         $repos = ReleaseConfig::repos((string) $input->getArgument('config'), (string) $input->getArgument('tag-only'));
         $force = (bool) $input->getOption('force');
+        $retagProtected = $force && (bool) $input->getOption('retag-protected');
         $dryRun = (bool) $input->getOption('dry-run');
 
         $tagger = new RepoTagger(KnpGitHubApi::withToken(self::token()), $dryRun);
@@ -45,7 +47,7 @@ final class RepoTagCommand extends Command
         $skipped = 0;
         $failed = 0;
         foreach ($repos as $repo) {
-            $r = $tagger->tag($repo, $branch, $tag, $force);
+            $r = $tagger->tag($repo, $branch, $tag, $force, $retagProtected);
             $output->writeln(sprintf('%-40s %-10s %s (%s)', $r->repo, $r->status, $r->branch, $r->detail));
             match ($r->status) {
                 'OK' => $ok++,

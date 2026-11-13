@@ -10,6 +10,13 @@ on:
       tag:
         required: true
         type: string
+      force:
+        type: boolean
+        default: false
+      retag_protected:
+        description: 'With force, also move the server tags (forced redo, checked by preflight)'
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       tag:
@@ -110,6 +117,9 @@ jobs:
           )
           if [ "${{ inputs.force }}" = "true" ]; then
             ARGS+=("--force")
+          fi
+          if [ "${{ inputs.retag_protected }}" = "true" ]; then
+            ARGS+=("--retag-protected")
           fi
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             ARGS+=("--dry-run")

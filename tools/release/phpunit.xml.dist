@@ -18,6 +18,7 @@
             <file>tests/ReleaseScheduleTest.php</file>
             <file>tests/ScheduleGateTest.php</file>
             <file>tests/PreflightTest.php</file>
+            <file>tests/DeploymentTest.php</file>
             <file>tests/MajorLifecycleTest.php</file>
             <file>tests/ReleaseCadenceTest.php</file>
             <file>tests/SchedulePlanTest.php</file>

@@ -10,9 +10,10 @@ namespace Nextcloud\ReleaseTools;
 /**
  * Decides what tagging a repo should do.
  *
- * Release tags are immutable on the server repos, so those are never
- * re-tagged even with --force. Elsewhere: create when missing, recreate only
- * when --force is given, otherwise skip.
+ * Release tags are immutable on the server repos: --force alone never moves
+ * them. A forced redo of a release that servers were never offered (checked
+ * by release:preflight --force) may, with $retagProtected. Elsewhere: create
+ * when missing, recreate only when --force is given, otherwise skip.
  */
 final class TagPolicy
 {
@@ -35,12 +36,12 @@ final class TagPolicy
      * @return self::ACTION_* what to do given whether the tag already exists
      *                        and whether --force was requested
      */
-    public static function decide(string $repo, bool $tagExists, bool $force): string
+    public static function decide(string $repo, bool $tagExists, bool $force, bool $retagProtected = false): string
     {
         if (!$tagExists) {
             return self::ACTION_CREATE;
         }
-        if ($force && !self::isProtected($repo)) {
+        if ($force && ($retagProtected || !self::isProtected($repo))) {
             return self::ACTION_RECREATE;
         }
         return self::ACTION_SKIP;
