@@ -6,19 +6,29 @@
 # Usage: package.sh <nextcloud-dir> <version> <output-dir>
 #
 # Creates: nextcloud-VERSION.tar.bz2, .zip, .sha256, .sha512, .md5
+# (the checksum files also cover nextcloud-VERSION.metadata when present)
 
 set -e
 
 # Generate sha256/sha512/md5 sidecars for the release archives
-# (nextcloud-<version>.{tar.bz2,zip}) in <output-dir>.
+# (nextcloud-<version>.{tar.bz2,zip}) in <output-dir>. When the migration
+# metadata file is there (NC30+), its sums are appended to each sidecar, as
+# the release script does.
 generate_checksums() {
   local output="$1" version="$2" file
+  local metadata="nextcloud-${version}.metadata"
   for file in "nextcloud-${version}.tar.bz2" "nextcloud-${version}.zip"; do
     [ -f "$output/$file" ] || continue
     ( cd "$output" \
       && sha256sum "$file" > "${file}.sha256" \
       && sha512sum "$file" > "${file}.sha512" \
-      && md5sum "$file" > "${file}.md5" )
+      && md5sum "$file" > "${file}.md5" ) || return 1
+    if [ -f "$output/$metadata" ]; then
+      ( cd "$output" \
+        && sha256sum "$metadata" >> "${file}.sha256" \
+        && sha512sum "$metadata" >> "${file}.sha512" \
+        && md5sum "$metadata" >> "${file}.md5" ) || return 1
+    fi
   done
 }
 
