@@ -17,6 +17,10 @@ use Nextcloud\ReleaseTools\GitHub\GitHubApi;
  * still dispatches the pipeline it sends "v35.0.4" and has already pushed the
  * tags, so a leading "v" and existing tags are only rejected once the
  * pipeline does the tagging itself.
+ *
+ * With $force an existing tag is expected (the release is being redone on a
+ * new commit), but only as long as updater_server production has not offered
+ * the version to servers.
  */
 final class Preflight
 {
@@ -32,7 +36,7 @@ final class Preflight
     ) {
     }
 
-    public function run(string $input, ReleaseSchedule $schedule, bool $shadow): PreflightResult
+    public function run(string $input, ReleaseSchedule $schedule, bool $shadow, bool $force = false): PreflightResult
     {
         $problems = [];
         $notes = [];
@@ -68,12 +72,23 @@ final class Preflight
                 $tagged[] = $repo;
             }
         }
-        if ($tagged !== [] && !$shadow) {
-            $problems[] = "{$tag} already exists in " . implode(' and ', $tagged) . '.';
+        if ($tagged !== [] && !$shadow && !$force) {
+            $problems[] = "{$tag} already exists in " . implode(' and ', $tagged) . '. Use force to redo it on a new commit.';
+        }
+        if ($force) {
+            try {
+                $listed = (new Deployment($this->api))->blockingEntry($version);
+                if ($listed !== null) {
+                    $problems[] = "updater_server production already lists {$listed}, so servers have been offered {$version}: release a new version instead of forcing this one.";
+                }
+            } catch (\RuntimeException $e) {
+                $problems[] = $e->getMessage() . ': refusing to force without knowing whether servers have been offered this version.';
+            }
         }
 
-        // The tag is the exact commit when it exists, the branch head otherwise.
-        $ref = in_array(self::SERVER, $tagged, true) ? $tag : $branch;
+        // The tag is the exact commit when it exists, the branch head otherwise
+        // or when the release is being redone.
+        $ref = in_array(self::SERVER, $tagged, true) && !$force ? $tag : $branch;
         $versionPhp = $this->api->fileContent(self::SERVER, 'version.php', $ref);
         $stated = $versionPhp !== null ? self::versionString($versionPhp) : null;
         if ($stated === null) {

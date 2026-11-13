@@ -26,7 +26,7 @@ final class RepoTagger
     ) {
     }
 
-    public function tag(string $repo, string $preferredBranch, string $tag, bool $force): TagResult
+    public function tag(string $repo, string $preferredBranch, string $tag, bool $force, bool $retagProtected = false): TagResult
     {
         $branch = $preferredBranch;
         $sha = $this->api->branchSha($repo, $branch);
@@ -38,7 +38,7 @@ final class RepoTagger
             return new TagResult($repo, $branch, 'FAILED', 'no branch found');
         }
 
-        $action = TagPolicy::decide($repo, $this->api->tagSha($repo, $tag) !== null, $force);
+        $action = TagPolicy::decide($repo, $this->api->tagSha($repo, $tag) !== null, $force, $retagProtected);
 
         if ($action === TagPolicy::ACTION_SKIP) {
             return new TagResult($repo, $branch, 'SKIPPED', 'already tagged');
