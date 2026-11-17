@@ -52,13 +52,13 @@ final class PreflightTest extends TestCase
         return $api;
     }
 
-    private function preflight(FakeGitHubApi $api, string $input, bool $shadow = false, array $schedule = ['Nextcloud 35.0.5' => '2027-01-07']): PreflightResult
+    private function preflight(FakeGitHubApi $api, string $input, bool $shadow = false, array $schedule = ['Nextcloud 35.0.5' => '2027-01-07'], bool $force = false): PreflightResult
     {
         $path = tempnam(sys_get_temp_dir(), 'sched');
         file_put_contents($path, json_encode($schedule));
         try {
             return (new Preflight($api, new ScheduleGate($api, new MajorLifecycle($api)), $this->root))
-                ->run($input, ReleaseSchedule::load($path), $shadow);
+                ->run($input, ReleaseSchedule::load($path), $shadow, $force);
         } finally {
             unlink($path);
         }
@@ -108,7 +108,7 @@ final class PreflightTest extends TestCase
         $api = $this->api('v35.0.4', '35.0.4');
         $api->seedTag(Preflight::SERVER, 'v35.0.4');
 
-        $this->assertSame(['v35.0.4 already exists in nextcloud/server.'], $this->preflight($api, '35.0.4')->problems);
+        $this->assertSame(['v35.0.4 already exists in nextcloud/server. Use force to redo it on a new commit.'], $this->preflight($api, '35.0.4')->problems);
     }
 
     public function testExistingTagIsExpectedWhileTheLegacyScriptTagsAndIsTheRefChecked(): void
@@ -120,6 +120,27 @@ final class PreflightTest extends TestCase
         $api->seedTag(Preflight::RELEASES, 'v35.0.4');
 
         $this->assertSame([], $this->preflight($api, '35.0.4', shadow: true)->problems);
+    }
+
+    public function testForceRedoesATaggedReleaseServersWereNeverOffered(): void
+    {
+        // Redone on the branch head: version.php is read there, not at the old tag.
+        $api = $this->api('stable35', '35.0.4');
+        $api->seedTag(Preflight::SERVER, 'v35.0.4');
+        $api->seedFile('nextcloud-releases/updater_server', 'production', 'config/releases.json', '{"35.0.3":{}}');
+
+        $this->assertSame([], $this->preflight($api, '35.0.4', force: true)->problems);
+    }
+
+    public function testForceIsRefusedOnceProductionListsTheVersion(): void
+    {
+        $api = $this->api('stable35', '35.0.3');
+        $api->seedTag(Preflight::SERVER, 'v35.0.3');
+        $api->seedFile('nextcloud-releases/updater_server', 'production', 'config/releases.json', '{"35.0.3":{}}');
+
+        $problems = $this->preflight($api, '35.0.3', force: true, schedule: ['Nextcloud 35.0.4' => '2026-12-10'])->problems;
+
+        $this->assertSame(['updater_server production already lists 35.0.3, so servers have been offered 35.0.3: release a new version instead of forcing this one.'], $problems);
     }
 
     public function testForgottenRcBumpIsCaught(): void

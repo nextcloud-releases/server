@@ -31,7 +31,8 @@ final class PreflightCommand extends Command
             ->addArgument('version', InputArgument::REQUIRED, 'Version to release, e.g. 35.0.4')
             ->addOption('root', null, InputOption::VALUE_REQUIRED, 'Directory holding stableN.json / master.json', '.')
             ->addOption('schedule', null, InputOption::VALUE_REQUIRED, 'release-schedule.json path', 'release-schedule.json')
-            ->addOption('shadow', null, InputOption::VALUE_NONE, 'The legacy release script still tags: accept a leading v and existing tags');
+            ->addOption('shadow', null, InputOption::VALUE_NONE, 'The legacy release script still tags: accept a leading v and existing tags')
+            ->addOption('force', null, InputOption::VALUE_NONE, 'Redo an existing release on a new commit, refused once updater_server production lists it');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -47,6 +48,7 @@ final class PreflightCommand extends Command
                 (string) $input->getArgument('version'),
                 ReleaseSchedule::load((string) $input->getOption('schedule')),
                 (bool) $input->getOption('shadow'),
+                (bool) $input->getOption('force'),
             );
 
         foreach ($result->notes as $note) {

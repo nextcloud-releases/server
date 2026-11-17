@@ -68,6 +68,18 @@ final class RepoTaggerTest extends TestCase
         $this->assertSame([], $api->journal);
     }
 
+    public function testServerRepoRetaggedOnAForcedRedo(): void
+    {
+        $api = new FakeGitHubApi();
+        $api->seedBranch('nextcloud/server', 'stable34', 'sha-fix', true);
+        $api->seedTag('nextcloud/server', 'v34.0.1', 'old-sha');
+        $r = (new RepoTagger($api))->tag('nextcloud/server', 'stable34', 'v34.0.1', true, true);
+        $this->assertSame('OK', $r->status);
+        $this->assertSame([
+            ['action' => 'retag', 'repo' => 'nextcloud/server', 'tag' => 'v34.0.1', 'sha' => 'sha-fix', 'force' => true],
+        ], $api->journal);
+    }
+
     public function testFallsBackToDefaultBranch(): void
     {
         $api = new FakeGitHubApi();

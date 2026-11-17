@@ -14,6 +14,10 @@ on:
         description: 'Only run the preflight checks'
         type: boolean
         default: false
+      force:
+        description: 'Redo an existing release on a new commit (refused once updater_server production lists it)'
+        type: boolean
+        default: false
 
 jobs:
   # Refuses a release before anything is tagged: version format, config JSON,
@@ -49,9 +53,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.tag }}
           SHADOW: ${{ vars.PIPELINE_PUBLISHES != 'true' && '--shadow' || '' }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
         run: |
-          # shellcheck disable=SC2086 # SHADOW is one flag or nothing
-          php tools/release/bin/console release:preflight "$VERSION" $SHADOW
+          # shellcheck disable=SC2086 # SHADOW and FORCE are one flag or nothing
+          php tools/release/bin/console release:preflight "$VERSION" $SHADOW $FORCE
 
   # The single human gate: the release team (not whoever dispatched) approves
   # through the release environment, then everything below runs on its own.
@@ -68,15 +73,69 @@ jobs:
           TAG: ${{ needs.preflight.outputs.tag }}
         run: echo "::notice::${TAG} approved"
 
-  tag:
+  # A forced redo of a release the pipeline published: after approval, check
+  # updater_server production again (approval can take hours), then withdraw
+  # the GitHub release and the updater pull request so the run recreates them.
+  # The legacy script owns both until PIPELINE_PUBLISHES.
+  cleanup:
     needs: [preflight, approve]
+    if: ${{ inputs.force && vars.PIPELINE_PUBLISHES == 'true' && needs.approve.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout config
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2.40.0
+        with:
+          php-version: '8.3'
+          tools: composer
+
+      - name: Install release-tools
+        run: composer install --no-interaction --no-progress --no-dev
+        working-directory: tools/release
+
+      - name: Check again that servers were never offered it
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.tag }}
+        run: php tools/release/bin/console release:preflight "$VERSION" --force
+
+      - name: Withdraw the GitHub release and the updater pull request
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.preflight.outputs.tag }}
+        run: |
+          VERSION="${TAG#v}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # The tag stays; the tag job moves it to the new commit.
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes
+            echo "::notice::Deleted release ${TAG}"
+          fi
+          PR=$(gh pr list --repo nextcloud-releases/updater_server --head "releases/${VERSION}" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$PR" ]; then
+            gh pr close "$PR" --repo nextcloud-releases/updater_server --delete-branch \
+              --comment "Superseded by a forced redo of ${TAG}: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "::notice::Closed updater_server#${PR}"
+          fi
+
+  tag:
+    needs: [preflight, approve, cleanup]
     if: >-
       always() && !inputs.dry_run
       && needs.preflight.result == 'success'
       && (needs.approve.result == 'success' || needs.approve.result == 'skipped')
+      && (needs.cleanup.result == 'success' || needs.cleanup.result == 'skipped')
     uses: ./.github/workflows/release-tag.yml
     with:
       tag: ${{ needs.preflight.outputs.tag }}
+      force: ${{ inputs.force }}
+      # Server tags only move on a forced redo of a release the pipeline owns.
+      retag_protected: ${{ inputs.force && vars.PIPELINE_PUBLISHES == 'true' }}
     secrets: inherit
 
   changelog:
@@ -127,7 +186,7 @@ jobs:
     permissions:
       contents: none
     runs-on: ubuntu-latest
-    needs: [preflight, approve, tag, changelog, build, updater, schedule, milestones]
+    needs: [preflight, approve, cleanup, tag, changelog, build, updater, schedule, milestones]
 
     if: always()
 

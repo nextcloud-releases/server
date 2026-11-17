@@ -42,4 +42,11 @@ final class TagPolicyTest extends TestCase
         $this->assertTrue(TagPolicy::isProtected('nextcloud/server'));
         $this->assertFalse(TagPolicy::isProtected('nextcloud/activity'));
     }
+
+    public function testServerReposMoveOnlyOnAForcedRedoServersWereNeverOffered(): void
+    {
+        $this->assertSame(TagPolicy::ACTION_RECREATE, TagPolicy::decide('nextcloud/server', true, true, true));
+        // retagProtected without force is not a way in.
+        $this->assertSame(TagPolicy::ACTION_SKIP, TagPolicy::decide('nextcloud/server', true, false, true));
+    }
 }
