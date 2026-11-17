@@ -53,9 +53,27 @@ jobs:
           # shellcheck disable=SC2086 # SHADOW is one flag or nothing
           php tools/release/bin/console release:preflight "$VERSION" $SHADOW
 
-  tag:
+  # The single human gate: the release team (not whoever dispatched) approves
+  # through the release environment, then everything below runs on its own.
+  # Off while the legacy script dispatches every release (PIPELINE_PUBLISHES).
+  approve:
     needs: preflight
-    if: ${{ !inputs.dry_run }}
+    if: ${{ !inputs.dry_run && vars.PIPELINE_PUBLISHES == 'true' }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions: {}
+    steps:
+      - name: Approved
+        env:
+          TAG: ${{ needs.preflight.outputs.tag }}
+        run: echo "::notice::${TAG} approved"
+
+  tag:
+    needs: [preflight, approve]
+    if: >-
+      always() && !inputs.dry_run
+      && needs.preflight.result == 'success'
+      && (needs.approve.result == 'success' || needs.approve.result == 'skipped')
     uses: ./.github/workflows/release-tag.yml
     with:
       tag: ${{ needs.preflight.outputs.tag }}
@@ -109,7 +127,7 @@ jobs:
     permissions:
       contents: none
     runs-on: ubuntu-latest
-    needs: [preflight, tag, changelog, build, updater, schedule, milestones]
+    needs: [preflight, approve, tag, changelog, build, updater, schedule, milestones]
 
     if: always()
 
